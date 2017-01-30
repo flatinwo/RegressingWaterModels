@@ -1,0 +1,11 @@
+Combined contains actual (cavitation data) spinodal data for ST2
+Combined-01 contains actual spinodal data offset by 25MPa for ST2
+Combined-02 contains actual spinodal data offset by 50MPa for ST2
+Combined-03 contains actual spinodal data offset by 50MPa and show critical pt for ST2
+Combined-04 contains actual spinodal data offset by -50MPa, shows critical pt, and matches critical pt
+try to match location of reduced pressure for critical point
+
+#new rescaling
+two part
+P/Pc and P-Ps
+determine crossover point by continuity between P/Pc = (P-Ps)/(ref. Pc molecule)
