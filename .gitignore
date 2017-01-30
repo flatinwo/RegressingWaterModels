@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*/*.pyc
+*/_pycache__
 
 # C extensions
 *.so
@@ -23,6 +25,7 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+*/Combined*/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -87,3 +90,7 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# Pdf files
+*/*.pdf
+*/*/*.pdf
