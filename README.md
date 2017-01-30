@@ -1,2 +1,2 @@
 # RegressingWaterModels
-a simple Python script to analyze water models
+a simple Python package to analyze water models
