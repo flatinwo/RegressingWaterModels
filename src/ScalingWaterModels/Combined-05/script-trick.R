@@ -7,13 +7,13 @@ data2 <- subset(mydata, Source %in% c("TSEOS") & Temperature > -1.)
 data5 <- subset(mydata, !(Property == "LLCP"))
 data2a <- subset(data2, Property %in% c("Tmax","Tmin"))
 data2b <-subset(data2, !(Property %in% c("Tmax","Tmin")))
-data3 <- subset(data2a, Pressure > 0.65) # to avoid crossing of lines
-data4 <- subset(data2a, Pressure <= 0.65) # to avoid crossing of lines
+data3 <- subset(data2a, Pressure > 200) # to avoid crossing of lines
+data4 <- subset(data2a, Pressure <= 200) # to avoid crossing of lines
 p <- ggplot(subset(data5, Source %in% c("Madrid+Princeton","Poole") & Temperature > -1.),aes(Temperature,Pressure,color=factor(Property),shape=factor(Source),alpha=factor(Model)))
 #p <- p + geom_point(data=subset(mydata,Property %in% c("LLCP")),aes(Temperature,Pressure),size=6,shape=10)
 p <- p + scale_alpha_discrete(range=c(0.4, 1.0),name="Model")
 p <- p + geom_point(size=4) + scale_color_discrete(parse(text=paste("Property")))
-p <- p + ylab("Rescaled Pressure")+xlab("Rescaled Temperature") + scale_shape_discrete("Source") 
+p <- p + ylab("Rescaled Pressure")+xlab("Temperature") + scale_shape_discrete("Source") 
 p <- p + geom_line(data=data3,aes(x=Temperature,y=Pressure)) + geom_line(data=data4,aes(x=Temperature,y=Pressure))
 p <- p + geom_line(data=data2b,aes(x=Temperature, y=Pressure))
 p <- p + guides(color = guide_legend(override.aes = list(size=4,linetype=0))) 

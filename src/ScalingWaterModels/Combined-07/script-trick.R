@@ -3,13 +3,13 @@ mydata <- read.table('All-1.dat',header=TRUE)
 theme_set(theme_gray(base_size = 24))
 #tiff("AllDataPhaseDiagram.tiff",width=12,height=8,units='in',res=300)
 pdf("RescaledTSEOS.pdf")#,width=12,height=8)#,units='in',res=300)
-data2 <- subset(mydata, Source %in% c("TSEOS") & Temperature > -1.)
+data2 <- subset(mydata, Source %in% c("TSEOS") & Temperature > -100.)
 data5 <- subset(mydata, !(Property == "LLCP"))
 data2a <- subset(data2, Property %in% c("Tmax","Tmin"))
 data2b <-subset(data2, !(Property %in% c("Tmax","Tmin")))
-data3 <- subset(data2a, Pressure > 0.65) # to avoid crossing of lines
-data4 <- subset(data2a, Pressure <= 0.65) # to avoid crossing of lines
-p <- ggplot(subset(data5, Source %in% c("Madrid+Princeton","Poole") & Temperature > -1.),aes(Temperature,Pressure,color=factor(Property),shape=factor(Source),alpha=factor(Model)))
+data3 <- subset(data2a, Pressure > 400) # to avoid crossing of lines
+data4 <- subset(data2a, Pressure <= 400) # to avoid crossing of lines
+p <- ggplot(subset(data5, Source %in% c("Madrid+Princeton","Poole") & Temperature > -100.),aes(Temperature,Pressure,color=factor(Property),shape=factor(Source),alpha=factor(Model)))
 #p <- p + geom_point(data=subset(mydata,Property %in% c("LLCP")),aes(Temperature,Pressure),size=6,shape=10)
 p <- p + scale_alpha_discrete(range=c(0.4, 1.0),name="Model")
 p <- p + geom_point(size=4) + scale_color_discrete(parse(text=paste("Property")))

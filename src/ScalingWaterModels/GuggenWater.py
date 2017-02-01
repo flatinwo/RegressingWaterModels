@@ -70,6 +70,8 @@ class GuggenheimWater:
 		self.Property = []
 		self.Source = []
 		self.PropertyDict = {}
+		self.Rescalings = {}
+		self.l = 1.
 
 	def rescale(self,T,P,offsetCriticalPt=0.8676):
 		Tw, Ps =  self.model.WidomTemperature(P),self.model.SpinodalPressure(T)
@@ -78,22 +80,63 @@ class GuggenheimWater:
 			Tr, Pr = (T-Tw)/100.,(P-Ps)/644
 		else:
 			Tr, Pr = (T-Tw)/100., P/Pc
-		return Tr, Pr#(((P-Ps)/Pc)*(Pc/(Pc-Ps)))**(1.)
+		return Tr, Pr
+
+	def delineateSpinodal(self,T,P):
+		return T, P - self.model.SpinodalPressure(T)
+
+	def delineateWidomLine(self,T,P):
+		return T-self.model.WidomTemperature(P), P
+
+	def delineateSpinodalandWidomLine(self, T, P):
+		return T-self.model.WidomTemperature(P), P - self.model.SpinodalPressure(T)
+
+	def delineateCriticalPoint(self,T,P,l=1.):
+		Ps = self.model.SpinodalPressure(T)
+		PPs = P - Ps
+		TTw = T - self.model.WidomTemperature(P)
+		Tc = self.model.CriticalParams.Tc
+		Pc = self.model.CriticalParams.Pc
+		PsTc = self.model.SpinodalPressure(Tc)
+		if PPs <= self.PPst : return TTw/Tc, PPs/Pc 
+		else: 
+			return TTw/Tc, PPs/(Pc) #
+
+	def findScalingConstantPerProperty(self, Pt, PPst,Tt):
+		Pc,Tc = self.model.CriticalParams.Pc, self.model.CriticalParams.Tc
+		PsTc = self.model.SpinodalPressure(Tc)
+		PsTt = self.model.SpinodalPressure(Tt)
+		print("My (Pt, PPst, Tt) is %f, %f, %f"%(Pt,PPst,Tt))
+		self.K = (Pc - PsTc)/((Pt-PsTc)*PPst)
+		self.PPst = PPst
+		self.l = (Pt - 0.5*Pc)/(PsTt*(1+0.5))
+
+	def clearAll(self):
+		mymodel = self.model
+		self.__init__(model=mymodel)
 
 
-	def addPoint(self,T,P,Property="Unknown",Source="Unknown",offsetCriticalPt=1.):
-		x,y = self.rescale(T,P,offsetCriticalPt)
+	def addPoint(self,T,P,Property="Unknown",Source="Unknown",offsetCriticalPt=1.,callback="rescale"):
+		try:
+			func = getattr(self,str(callback))
+		except:
+			print("Callback function error, valid options are: delineateSpiondal\ndelineateWidomLine\n"\
+				"delineateSpinodalandWidomLine\ndelineateCriticalPoint")
+			exit(-1)
+		x,y = func(T,P)
 		self.Trescale.append(x)
 		self.Prescale.append(y)
 		self.Property.append(Property)
 		self.Source.append(Source)
 
 		if Property not in self.PropertyDict: self.PropertyDict[Property] = []
-		self.PropertyDict[Property].append([x,y,Source])
+		self.PropertyDict[Property].append([x,y,Source,T,P])
 
 
-	def writetoFile(self,filename="RescaledTIP4P2005.dat",isnew=True, add_critical_pt=True,offsetCriticalPt=1.):
-		if add_critical_pt: self.addPoint(self.model.CriticalParams.Tc, self.model.CriticalParams.Pc,"LLCP","TSEOS",offsetCriticalPt)
+
+
+	def writetoFile(self,filename="RescaledTIP4P2005.dat",isnew=True, add_critical_pt=True,offsetCriticalPt=1.,callback="rescale"):
+		if add_critical_pt: self.addPoint(self.model.CriticalParams.Tc, self.model.CriticalParams.Pc,"LLCP","TSEOS",offsetCriticalPt,callback)
 		if not self.PropertyDict:
 			print("No entries have been added to dictionary. Drops mic!")
 		else:
@@ -101,7 +144,7 @@ class GuggenheimWater:
 			with open(filename,'a') as fn:
 				if isnew: fn.write('Temperature\tPressure\tProperty\tSource\tModel\n')
 				for myproperty in self.PropertyDict:
-					T,P,S = np.transpose(np.array(self.PropertyDict[myproperty]))
+					T,P,S = np.transpose(np.array(self.PropertyDict[myproperty]))[0:3]
 					for i in np.arange(len(T)):
 						fn.write('%f\t%f\t%10s\t%10s\t%10s\n'%(float(T[i]),float(P[i]),myproperty,S[i],model_name))
 			fn.close()
