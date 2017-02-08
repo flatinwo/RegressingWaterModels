@@ -29,6 +29,7 @@ model.writetoFile('All.dat',callback=mycb2)
 
 
 st2 = gw.ST2I_mean_field()
+st2.spinodal[0] += 0.
 model2 = gw.GuggenheimWater(st2)
 T,P,Feature,Src = np.loadtxt('FeaturesST2.dat',dtype={'names':('T','P','F','S'),'formats':(np.float,np.float,'S9','S9')},
  usecols=(0,1,2,3),unpack=True,skiprows=1)

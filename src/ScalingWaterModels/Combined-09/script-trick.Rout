@@ -1,7 +1,7 @@
 
-R version 3.3.1 (2016-06-21) -- "Bug in Your Hair"
+R version 3.3.2 (2016-10-31) -- "Sincere Pumpkin Patch"
 Copyright (C) 2016 The R Foundation for Statistical Computing
-Platform: x86_64-apple-darwin15.5.0 (64-bit)
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -42,7 +42,7 @@ Type 'q()' to quit R.
 > p <- p + guides(alpha = guide_legend(override.aes = list(size=4,shape=c(17,16),linetype=0,alpha=range(0.1,1))))
 > p <- p + geom_point(data=subset(mydata,Property %in% c("LLCP") & Model== "TIP4P2005"),aes(Temperature,Pressure),size=8,shape=21,fill="white",stroke=2,show.legend=FALSE,na.rm=TRUE)
 > p <- p + geom_point(data=subset(mydata,Property %in% c("LLCP") & Model== "ST2"),aes(Temperature,Pressure),size=8,shape=24,fill="white",stroke=2,show.legend=FALSE,alpha=0.7,na.rm=TRUE)
-> p <- p + guides(color = guide_legend(override.aes=list(linetype=0,shape=c(16,16,16,16,21,16,16,16,16,16,16),size=4,fill="white",stroke=2)))
+> #p <- p + guides(color = guide_legend(override.aes=list(linetype=0,shape=c(16,16,16,16,21,16,16,16,16,16,16),size=4,fill="white",stroke=2)))
 > #p <- p + guides(shape=guide_legend(override.aes=list(shape=c(16,17,95))))
 > p
 > #p <- p + guides(alpha = guide_legend(override.aes = list(size=4,linetype=0)))
@@ -54,4 +54,4 @@ null device
 > 
 > proc.time()
    user  system elapsed 
-  4.408   0.432   5.810 
+  1.091   0.087   1.291 

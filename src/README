@@ -7,4 +7,8 @@
 	allow for figure generation
 5.	write monte carlo type fit
 6.	write method in RawData to generate
-	figure		
+	figure
+
+
+results --> F-statistic shows that cubic fit is the best response of pressure
+with respect to the spinodal	

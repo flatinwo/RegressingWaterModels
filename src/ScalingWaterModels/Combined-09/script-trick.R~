@@ -9,7 +9,7 @@ data2a <- subset(data2, Property %in% c("Tmax","Tmin"))
 data2b <-subset(data2, !(Property %in% c("Tmax","Tmin")))
 data3 <- subset(data2a, Pressure > 0.75) # to avoid crossing of lines
 data4 <- subset(data2a, Pressure <= 0.75) # to avoid crossing of lines
-p <- ggplot(subset(data5, Source %in% c("Madrid+Princeton","Poole") & Temperature > -1.),aes(Temperature,Pressure,color=factor(Property),shape=factor(Source),alpha=factor(Model)))
+p <- ggplot(subset(data5, Source %in% c("Madrid+Princeton","Poole") & Temperature > -0.5),aes(Temperature,Pressure,color=factor(Property),shape=factor(Source),alpha=factor(Model)))
 #p <- p + geom_point(data=subset(mydata,Property %in% c("LLCP")),aes(Temperature,Pressure),size=6,shape=10)
 p <- p + scale_alpha_discrete(range=c(0.4, 1.0),name="Model")
 p <- p + geom_point(size=4) + scale_color_discrete(parse(text=paste("Property")))

@@ -1,5 +1,6 @@
 import numpy as np
 import TSEOS as ts
+import pandas as pd 
 
 class OneDFit:
 	def __init__(self,name, RawData=None):
@@ -38,7 +39,7 @@ class SpinodalFit(OneDFit):
 	def setCriticalPt(self,Tc,Pc,Rhoc):
 		self.datapt.set_critical_pt(CriticalParams(Tc,Pc,Rhoc))
 
-	def fit(self,Pmax=0.):
+	def fit(self,Pmax=0.,writeData=False):
 		SpinodalData=self.Rawdata.AllData.copy()
 		
 		SpinodalData=SpinodalData[np.less_equal(SpinodalData[:,1],Pmax)]
@@ -69,11 +70,19 @@ class SpinodalFit(OneDFit):
 		res1 = float(p[1])
 
 		#fit Ps vs Ts
-		p = np.polyfit(Tshat,CalculatedSpinodal[:,1],2,full=True) # quadratic fit
+		polyorder = 3 #switching to cubic fit after f-statistic analyis 
+		p = np.polyfit(Tshat,CalculatedSpinodal[:,1],polyorder,full=True) 
 		self.fitParams['P(T) params']=np.poly1d(p[0]) 
 		res2 = float(p[1])
 
 		print(("Residuals for A(T) params and P(T) params are %e and %e respectively")%(res1,res2))
+
+		if writeData:
+			PT = np.transpose(np.array([Tshat,CalculatedSpinodal[:,1]]))
+			df = pd.DataFrame(PT,columns=['pressure','reduced_temperature'])
+			df.to_csv(r'PTspinodal.txt',sep='\t',index=False,header=True)
+			print("Written spinodal to PTspiondal.txt")
+
 
 	def getFigure(self):
 		return 0
@@ -82,5 +91,5 @@ class SpinodalFit(OneDFit):
 
 if __name__ == "__main__":
 	mysf = SpinodalFit()
-	mysf.fit()
+	mysf.fit(writeData=True)
 	print("Your move...")

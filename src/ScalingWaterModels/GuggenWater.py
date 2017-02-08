@@ -98,9 +98,12 @@ class GuggenheimWater:
 		Tc = self.model.CriticalParams.Tc
 		Pc = self.model.CriticalParams.Pc
 		PsTc = self.model.SpinodalPressure(Tc)
-		if PPs <= self.PPst : return TTw/Tc, PPs/Pc 
+		if PPs <= self.PPst : return T-Tc, P-Pc #TTw/Tc, PPs/Pc 
 		else: 
-			return TTw/Tc, PPs/(Pc) #
+			return T-Tc, P-Pc #TTw/Tc, PPs/(Pc) #
+
+	def identity(self,T,P):
+		return T,P
 
 	def findScalingConstantPerProperty(self, Pt, PPst,Tt):
 		Pc,Tc = self.model.CriticalParams.Pc, self.model.CriticalParams.Tc
