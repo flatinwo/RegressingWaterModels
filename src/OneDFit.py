@@ -30,7 +30,7 @@ class SpinodalFit(OneDFit):
 		self.fitParams['A(T) params'] = 0.
 		self.setUpLog = False
 		self.order0=2
-		self.order1=2 # analysis of anova shows that quadratic fit here is stat sig.
+		self.order1=4 # analysis of anova shows that quartic fit here is stat sig.
 		self.countsl=5
 
 	def setFitInfo(self):
@@ -79,13 +79,13 @@ class SpinodalFit(OneDFit):
 
 		if writeData:
 			PT = np.transpose(np.array([Tshat,CalculatedSpinodal[:,1]]))
-			df = pd.DataFrame(PT,columns=['pressure','reduced_temperature'])
-			df.to_csv(r'PTspinodal.txt',sep='\t',index=False,header=True)
+			df = pd.DataFrame(PT,columns=['reduced_temperature','pressure'])
+			df.to_csv(r'./Data/PTspinodal.txt',sep='\t',index=False,header=True)
 			print("Written spinodal to PTspiondal.txt")
 
 			AT = np.transpose(np.array([Tshat,A]))
-			df = pd.DataFrame(AT,columns=['Afactor','reduced_temperature'])
-			df.to_csv(r'ATspinodal.txt',sep='\t',index=False,header=True)
+			df = pd.DataFrame(AT,columns=['reduced_temperature','Afactor'])
+			df.to_csv(r'./Data/ATspinodal.txt',sep='\t',index=False,header=True)
 			print("Written spinodal to ATspiondal.txt")
 
 

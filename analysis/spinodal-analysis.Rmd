@@ -1,0 +1,60 @@
+---
+title: "Statistical Learning of Water Spinodal"
+author: "Folarin Latinwo"
+date: "2/16/2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## The Vapor-Liquid Spinodal
+
+The spinodal represents the first stability limit for a substance in a given phase. Formally, this is defined by the condition, $$\left(\frac{\partial P}{\partial V}\right)_{T,s} \equiv 0.$$
+where $P$ is the pressure, $V$ is the volume, $T$ is the temperature, and $s$ indicates the spinodal condition. The statement above necessary implies that the isothermal compressibility diverges at the spinodal. 
+
+In this document, our goal is to analyze statistical models for the properties of the spinodal. Specifically, we will consider two models:
+
+$$P_s=f(T)$$
+$$A_s=\frac{\sqrt{8}}{3\sqrt{\left(\frac{\partial^2 P}{\partial^2 V}\right)_{T,s}}} = g(T)$$
+
+Below, we consider a family of polynomial models for $f(T)$ and $g(T)$.
+
+## f(T)
+```{r fT}
+data <- read.table('../src/Data/PTspinodal.txt',header=T)
+attach(data)
+lmA1=lm(pressure~poly(reduced_temperature,1))
+lmA2=lm(pressure~poly(reduced_temperature,2))
+lmA3=lm(pressure~poly(reduced_temperature,3))
+lmA4=lm(pressure~poly(reduced_temperature,4))
+anova(lmA1,lmA2)
+anova(lmA2,lmA3)
+anova(lmA3,lmA4)
+plot(reduced_temperature,pressure)
+lines(reduced_temperature,fitted(lmA3))
+```
+
+## g(T)
+
+You can also embed plots, for example:
+
+```{r gT}
+rm(list=ls())
+data <- read.table('../src/Data/ATspinodal.txt',header=T)
+attach(data)
+lmA1=lm(Afactor~poly(reduced_temperature,1))
+lmA2=lm(Afactor~poly(reduced_temperature,2))
+lmA3=lm(Afactor~poly(reduced_temperature,3))
+lmA4=lm(Afactor~poly(reduced_temperature,4))
+lmA5=lm(Afactor~poly(reduced_temperature,5))
+anova(lmA1,lmA2)
+anova(lmA2,lmA3)
+anova(lmA3,lmA4)
+anova(lmA4,lmA5)
+plot(reduced_temperature,Afactor)
+lines(reduced_temperature,fitted(lmA4))
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

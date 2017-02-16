@@ -11,4 +11,6 @@
 
 
 results --> F-statistic shows that cubic fit is the best response of pressure
-with respect to the spinodal	
+with respect to the spinodal
+check A vs T fit --> anova shows that polynomial of order 4 is best fit for A
+vs T data	
