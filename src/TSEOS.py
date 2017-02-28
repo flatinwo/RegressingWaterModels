@@ -61,6 +61,8 @@ class RawData:
 		x_P = np.loadtxt(fn,unpack=True,usecols=[1],skiprows=1)
 		x_Rho = np.loadtxt(fn,unpack=True,usecols=[2],skiprows=1)
 		self.AllData = np.stack([x_T, x_P, x_Rho],axis=1)
+		self.IsochoreDict = {}
+		self.buildDict = True
 
 	def getRawData(self):
 		return self.AllData
@@ -68,13 +70,25 @@ class RawData:
 	def trimTemperatureBounds(self,Tl=sys.float_info.min,Tu=sys.float_info.max):
 		self.AllData = self.AllData[np.logical_not(self.AllData[:,0] > Tu)]
 		self.AllData = self.AllData[np.logical_not(self.AllData[:,0] < Tl)]
+		self.buildDict = True
 
 	def trimPressureBounds(self,Pl=sys.float_info.min,Pu=sys.float_info.max):
 		self.AllData = self.AllData[np.logical_not(self.AllData[:,1] > Pu)]
 		self.AllData = self.AllData[np.logical_not(self.AllData[:,1] < Pl)]
+		self.buildDict = True
 
-	def trimPT(self,funcdict):
-		return 0.
+	def trimPT(self,Pl=0,Tl=0):
+		self.AllData = self.AllData[np.logical_and(self.AllData[:,0] > Tl, self.AllData[:,1] > Pl)]
+		self.buildDict = True
+
+	def trimAlongIsochore(self,Density=860,Tl=0,complement=False,densitymin=860):
+		assert(Density>=densitymin)
+		if complement:
+			self.AllData = self.AllData[np.logical_and(self.AllData[:,0] > Tl, self.AllData[:,2] == Density)] # an associated array
+		#be better for this
+		else:
+			self.AllData = self.AllData[np.logical_not(np.logical_and(self.AllData[:,0] < Tl, self.AllData[:,2] == Density))]
+		self.buildDict = True
 
 	def getTemperatures(self,copy=False):
 		i=0
@@ -88,12 +102,60 @@ class RawData:
 		i=2
 		return self.AllData[:,i].copy() if copy else self.AllData[:,i]
 
-	def plotAll(self):
-		return 0.
+	def updateIsochoreDict(self):
+		self.IsochoreDict = {}
+		for i in range(len(self.AllData)):
+			if self.AllData[i,2] not in self.IsochoreDict: self.IsochoreDict[self.AllData[i,2]] = [];
+			self.IsochoreDict[self.AllData[i,2]].append([ self.AllData[i,0],self.AllData[i,1] ])
+		self.buildDict = False
+
+
+
+	def plotAll(self,wait=False,skip=[],style="seaborn-colorblind",savefig=False,ncol=4,figsize=(10,10),
+		filename="./Data/RawEOS.pdf"):
+		#try:
+			if self.buildDict: self.updateIsochoreDict()
+			import matplotlib.pyplot as plt
+			from matplotlib import rc
+			from matplotlib.ticker import AutoMinorLocator
+			rc('font',family="Times New Roman")
+			rc('text',usetex=True)
+			rc('ytick',labelsize=24)
+			rc('xtick',labelsize=24)
+			rc('font',size=30)
+			rc('ytick.major',size=5)
+			#import seaborn as sns #pick bigger color cycle fancier method
+			hsv = plt.get_cmap('viridis')
+			colors = hsv(np.linspace(0,1.0,len(self.IsochoreDict)))
+			plt.figure(figsize=figsize)
+			minorLocator = AutoMinorLocator(2)
+
+			with plt.style.context(style):
+				for isochore,color in zip(sorted(self.IsochoreDict),colors):
+					T = np.array(self.IsochoreDict[isochore])[:,0]
+					P = np.array(self.IsochoreDict[isochore])[:,1]
+					if isochore not in skip: 
+						plt.plot(T,P,'o',label=str(isochore),color=color, markersize=12)
+					else:
+						plt.plot(T,P,'-',label=(isochore), color=color, linewidth=2)
+
+				plt.legend(numpoints=1,loc='lower right',ncol=ncol,fontsize=10,markerscale=1.,frameon=False)
+				plt.xlabel('Temperature (K)')
+				plt.axes().xaxis.set_minor_locator(minorLocator)
+				plt.axes().yaxis.set_minor_locator(minorLocator)
+				plt.ylabel('Pressure (MPa)')
+				plt.tick_params(which='both', width=1)
+				plt.tick_params(which='major', length=7)
+				plt.tick_params(which='minor', length=4)
+				if not wait: plt.show() if not savefig else plt.savefig(filename,bbox_inches='tight',dpi=600)
+
+			#except:
+			#	print("Plotting error")
 
 
 
 if __name__ == "__main__":
 	myrawdata = RawData()
+	myrawdata.plotAll(savefig=True)
 	cpt = CriticalParams(180,330,0.00545)
 	print("Your move...")
