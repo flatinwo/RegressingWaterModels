@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import sys
 
 class CriticalParams:
@@ -109,11 +110,20 @@ class RawData:
 			self.IsochoreDict[self.AllData[i,2]].append([ self.AllData[i,0],self.AllData[i,1] ])
 		self.buildDict = False
 
+	def writeData(self,filename=None):
+		if filename is None: print("Please specify filename")
+		else:
+			df = pd.DataFrame(self.AllData,columns=["Temperature(K)",
+												"Pressure (MPa)",
+												"Density (kg/m^3)"])
+			df.to_csv(filename,header=True,index=False,sep="\t")
+
+
 
 
 	def plotAll(self,wait=False,skip=[],style="seaborn-colorblind",savefig=False,ncol=4,figsize=(10,10),
 		filename="./Data/RawEOS.pdf"):
-		#try:
+		try:
 			if self.buildDict: self.updateIsochoreDict()
 			import matplotlib.pyplot as plt
 			from matplotlib import rc
@@ -149,13 +159,13 @@ class RawData:
 				plt.tick_params(which='minor', length=4)
 				if not wait: plt.show() if not savefig else plt.savefig(filename,bbox_inches='tight',dpi=600)
 
-			#except:
-			#	print("Plotting error")
+		except:
+			print("Plotting error")
 
 
 
 if __name__ == "__main__":
-	myrawdata = RawData()
-	myrawdata.plotAll(savefig=True)
+	myrawdata = RawData(fn="./Data/pruned025compiledEOSAll")
+	myrawdata.plotAll(savefig=False)
 	cpt = CriticalParams(180,330,0.00545)
 	print("Your move...")

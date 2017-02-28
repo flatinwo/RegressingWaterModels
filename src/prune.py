@@ -29,9 +29,7 @@ if __name__ == "__main__":
 	#rd.plotAll()
 
 	df = ["%.2f"%(0.86 + 0.02*i) for i in range(10)]
-	prunelist = pruneFskts(datarange=df,cutofftime=25000)
-
-	for density,T in prunelist:
-		rd.trimAlongIsochore(Density=density,Tl=T)
-
-	rd.plotAll(filename="./Data/PrunedEOS_025ns.pdf",savefig=True)
+	prunelist = pruneFskts(datarange=df,cutofftime=200000)
+	for density,T in prunelist: rd.trimAlongIsochore(Density=density,Tl=T)
+	#rd.plotAll(filename="./Data/PrunedEOS_050ns.pdf",savefig=True)
+	rd.writeData(filename=r"./Data/pruned200CompiledEOSAll")
