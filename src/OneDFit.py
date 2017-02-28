@@ -95,7 +95,7 @@ class SpinodalFit(OneDFit):
 
 
 	def getFigure(self):
-		return 0
+		pass
 
 
 
