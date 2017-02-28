@@ -127,6 +127,15 @@ class ThermoPPty:
 			exit(0)
 
 
+class ThermoFit:
+	def __init__(self,model,minimizer):
+		self.model = model
+		self.minimizer = minimizer
+
+	def run(self):
+		pass
+
+
 if __name__ == "__main__":
 	myThermoFit = ThermoPPty(fn='./Data/pruned025compiledEOSAll')
 	print(myThermoFit)
