@@ -23,6 +23,7 @@ Below, we consider a family of polynomial models for $f(T)$ and $g(T)$.
 
 ## f(T)
 ```{r fT}
+rm(list=ls())
 data <- read.table('../src/Data/PTspinodal.txt',header=T)
 attach(data)
 lmA1=lm(pressure~poly(reduced_temperature,1))
@@ -33,7 +34,7 @@ anova(lmA1,lmA2)
 anova(lmA2,lmA3)
 anova(lmA3,lmA4)
 plot(reduced_temperature,pressure)
-lines(reduced_temperature,fitted(lmA3))
+lines(reduced_temperature,fitted(lmA2))
 ```
 
 ## g(T)
@@ -43,6 +44,8 @@ You can also embed plots, for example:
 ```{r gT}
 rm(list=ls())
 data <- read.table('../src/Data/ATspinodal.txt',header=T)
+data <- data[2:21,]
+class(data)
 attach(data)
 lmA1=lm(Afactor~poly(reduced_temperature,1))
 lmA2=lm(Afactor~poly(reduced_temperature,2))
@@ -51,10 +54,11 @@ lmA4=lm(Afactor~poly(reduced_temperature,4))
 lmA5=lm(Afactor~poly(reduced_temperature,5))
 anova(lmA1,lmA2)
 anova(lmA2,lmA3)
+anova(lmA2,lmA4)
 anova(lmA3,lmA4)
 anova(lmA4,lmA5)
 plot(reduced_temperature,Afactor)
-lines(reduced_temperature,fitted(lmA4))
+lines(reduced_temperature,fitted(lmA2))
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

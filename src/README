@@ -6,11 +6,14 @@
 	set method
 	allow for figure generation
 5.	write monte carlo type fit
-6.	write method in RawData to generate
+6.	write method in RawData to generate	Done
 	figure
 
 
-results --> F-statistic shows that cubic fit is the best response of pressure
-with respect to the spinodal
-check A vs T fit --> anova shows that polynomial of order 4 is best fit for A
-vs T data	
+and ANOVA
+results --> F-statistic and anova analyis is the best response of pressure
+as a function of temperature is quadratic with respect to the spinodal, with
+target significance of less than 0.1%
+check A vs T fit --> anova shows that polynomial of order 2 is best fit for A
+vs T data, considerations assigning lower weights to low temperature data, and
+considering a significance of 0.1%	

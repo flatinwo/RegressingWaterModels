@@ -22,16 +22,16 @@ class OneDFit:
 			return self.fitParams
 
 class SpinodalFit(OneDFit):
-	def __init__(self,fn='./Data/compiledEOSAll'):
+	def __init__(self,fn='./Data/compiledEOSAll',Tl=215):
 		OneDFit.__init__(self,name='spinodal',RawData=ts.RawData(fn))
 		self.datapt = ts.DataPt(293,101.325,1000.)
-		self.Rawdata.trimTemperatureBounds(Tl=215)
+		self.Rawdata.trimTemperatureBounds(Tl=Tl)
 		self.fitParams['P(T) params'] = 0.
 		self.fitParams['A(T) params'] = 0.
 		self.setUpLog = False
-		self.order0=2
-		self.order1=4 # analysis of anova shows that quartic fit here is stat sig.
-		self.countsl=5
+		self.order0=2 # this is a polynomial for P vs V, change at your own risk
+		self.order1=2 # analysis of anova shows that quadratic fit here is stat sig.
+		self.countsl=5 # optimized number of observations to select
 
 	def setFitInfo(self):
 		return 0.
@@ -61,16 +61,21 @@ class SpinodalFit(OneDFit):
 			DPDV[i,:] = Tl, p.deriv()(vls), p.deriv().deriv()(vls)
 			i = i+1
 
+
 		A = np.sqrt(8.)/(3.*np.sqrt(DPDV[:,2]))
 		Tshat, Pshat = self.datapt.CriticalParams.reduceTandP(CalculatedSpinodal[:,0],CalculatedSpinodal[:,1])
 
 		# fit A vs T
-		p = np.polyfit(Tshat,A,self.order1,full=True)
+		try: 
+			p = np.polyfit(Tshat,A,self.order1,full=True)
+		except: 
+			print("Warning:\nError in A vs T fit")
+			print(np.array([Tshat,A]))
 		self.fitParams['A(T) params'] = np.poly1d(p[0])
 		res1 = float(p[1])
 
 		#fit Ps vs Ts
-		polyorder = 3 #switching to cubic fit after f-statistic analyis 
+		polyorder = 2 #switching to quadratic fit after ANOVA analysis with p-value < 0.001 
 		p = np.polyfit(Tshat,CalculatedSpinodal[:,1],polyorder,full=True) 
 		self.fitParams['P(T) params']=np.poly1d(p[0]) 
 		res2 = float(p[1])
@@ -95,6 +100,7 @@ class SpinodalFit(OneDFit):
 
 
 if __name__ == "__main__":
-	mysf = SpinodalFit()
+	mysf = SpinodalFit(r'./Data/pruned025compiledEOSAll',Tl=230)
+	#mysf = SpinodalFit()
 	mysf.fit(writeData=True)
 	print("Your move...")
