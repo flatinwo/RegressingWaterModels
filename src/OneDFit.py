@@ -37,7 +37,7 @@ class SpinodalFit(OneDFit):
 		return 0.
 
 	def setCriticalPt(self,Tc,Pc,Rhoc):
-		self.datapt.set_critical_pt(CriticalParams(Tc,Pc,Rhoc))
+		self.datapt.set_critical_pt(ts.CriticalParams(Tc,Pc,Rhoc))
 
 	def fit(self,Pmax=0.,writeData=False):
 		SpinodalData=self.Rawdata.AllData.copy()
