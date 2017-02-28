@@ -1,7 +1,7 @@
 import numpy as np
 import OneDFit as od
 import TSEOS as ts
-from scipy.optimize import brentq, minimize_scalar
+from scipy.optimize import brentq, minimize_scalar, leastsq
 from numpy.polynomial.polynomial import polyval,polyval2d,polyder
 
 def getXs(cxy,x,y):
@@ -12,6 +12,7 @@ def getXs(cxy,x,y):
 	fxy = polyval2d(x,y, polyder(polyder(cxy,axis=0),axis=1))
 	fyy = polyval2d(x,y, polyder(polyder(cxy,axis=1),axis=1))
 	return f,fx,fy,fxx,fxy,fyy
+
 
 class ThermoPPty:
 	def __init__(self,fn='./Data/compiledEOSAll', Tc=200, Pc=200, Rhoc=1.,Tl=230.):
@@ -29,8 +30,26 @@ class ThermoPPty:
 		self.Ls = np.zeros([5,5])
 
 		self.fitparams = np.zeros(21)
+
+		self.UniqueDensities = np.array(list(sf.Rawdata.IsochoreDict.keys()))
+		self.IsochoreDict = {}
+		for density in sf.Rawdata.IsochoreDict:
+			if density not in self.IsochoreDict: self.IsochoreDict[density] = {}
+			for T, P in sf.Rawdata.IsochoreDict[density]:
+				self.IsochoreDict[density][T] = P
 		
 		self.f = lambda x, p : p[0]*x + p[1]*(x*np.log(x) + (1-x)*np.log(1-x)) + p[2]*x*(1-x)
+
+	def getPressure(self,T=200.,Density=1000, guess=True, Pguess=0., dRho=20.):
+		my_nearest = lambda array, value : array[np.abs(array-value).argmin()]
+		RhoMax = my_nearest(self.UniqueDensities,Density+dRho)
+		
+		Tn = my_nearest(np.array(list(self.IsochoreDict[RhoMax].keys())),T)
+		Pmax = self.IsochoreDict[RhoMax][Tn]
+		myres = lambda P: Rho - self.getDensity(T,P,False)
+		if not guess: Pmax = Pguess
+		plsq = leastsq(myres,Pmax)
+		return plsq[0]
 
 	def getDensity(self,T=200.,P=100.,computed=False):
 		if not computed: self.__compute(T,P)
@@ -126,6 +145,14 @@ class ThermoPPty:
 			print("Unable to converge calculation for equilibirum conc.")
 			exit(0)
 
+	def setValues(self, x):
+		L0, a, b, d, f = x[0:5]
+		self.Ls[0][1], self.Ls[0][2] = a*L0, d*L0
+		self.Ls[1][0], self.Ls[1][2] = L0, b*L0
+		self.Ls[2][0] = f*L0
+
+		pass
+
 
 class ThermoFit:
 	def __init__(self,model,minimizer):
@@ -138,6 +165,18 @@ class ThermoFit:
 
 if __name__ == "__main__":
 	myThermoFit = ThermoPPty(fn='./Data/pruned025compiledEOSAll')
+	start = True
+	nLs, nWs , nBg, delw, f = 5, 1, 12, 1., 0.
+	x=np.zeros(nLs+nWs+nBg)
+	if start:
+		x[0:nLs]=1.55607,0.154014,0.125093,0.00854418, 1.14576
+		x[nLs:nLs+nWs]=0.03
+		x[nLs+nWs:nLs+nWs+nBg] = [-0.00261876, 0.257249, -6.30589, 0.000605678,
+		0.0248091, -0.0400033, 2.18819, -0.000994166, -0.00840543, 0.0719058, -0.256674, 0.]
+	else:
+		x=np.loadtxt('current_fit')
+
+
 	print(myThermoFit)
 
 

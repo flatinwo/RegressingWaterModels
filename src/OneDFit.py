@@ -26,6 +26,7 @@ class SpinodalFit(OneDFit):
 		OneDFit.__init__(self,name='spinodal',RawData=ts.RawData(fn))
 		self.datapt = ts.DataPt(293,101.325,1000.)
 		self.Rawdata.trimTemperatureBounds(Tl=Tl)
+		self.Rawdata.updateIsochoreDict()
 		self.fitParams['P(T) params'] = 0.
 		self.fitParams['A(T) params'] = 0.
 		self.setUpLog = False
