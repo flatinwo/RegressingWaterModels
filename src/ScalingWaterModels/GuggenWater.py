@@ -1,11 +1,11 @@
-import TData as td
+from TData import CriticalParams
 import numpy as np
 from numpy.polynomial.polynomial import polyval2d,polyval
 from numpy import poly1d
 
 class TIP4P2005:
-	def __init__(self,CP=td.CriticalParams(182.,170.,0.05645)):
-		assert isinstance(CP,td.CriticalParams)
+	def __init__(self,CP=CriticalParams(182.,170.,0.05645)):
+		assert isinstance(CP,CriticalParams)
 		self.CriticalParams = CP
 		self.spinodal = np.array([-462.,475.02,-215.306])
 		L0, a, b, d, f = 1.55607, 0.154014, 0.125093, 0.0085418, 1.14576
@@ -51,8 +51,8 @@ class TIP4P2005:
 
 
 class ST2I_mean_field(TIP4P2005):
-	def __init__(self,CP=td.CriticalParams(253.5,160.,0.052478)):
-		assert isinstance(CP,td.CriticalParams)
+	def __init__(self,CP=CriticalParams(253.5,160.,0.052478)):
+		assert isinstance(CP,CriticalParams)
 		self.CriticalParams = CP
 		self.spinodal = np.array([-234.38-50.,628.41,-720.12])
 		L0, a, b, d, f = 3.4915, 0.085811, 0., 0., 0.
@@ -154,21 +154,26 @@ class GuggenheimWater:
 
 
 
-	def plot(self,savefig=False,skip=[],style='fivethirtyeight',wait=False,marker='o'):
+	def plot(self,savefig=False,skip=[],style='fivethirtyeight',wait=False,marker='o',
+			xlim=None,ylim=None,xlabel='Spinodal Line',ylabel='Widom Line'):
 		try:
 			import matplotlib.pyplot as plt
+			hsv = plt.get_cmap()
+			colors = hsv(np.linspace(0,1.0,len(self.PropertyDict)))
 			with plt.style.context(style):
-				for myproperty in self.PropertyDict:
+				for myproperty,color in zip(self.PropertyDict,colors):
 					T = np.array(self.PropertyDict[myproperty])[:,0]
 					P = np.array(self.PropertyDict[myproperty])[:,1]
 					if myproperty not in skip: 
-						plt.plot(T,P,marker,label=myproperty, markersize=12)
+						plt.plot(T,P,marker,label=myproperty, markersize=12,color=color, linewidth=2)
 					else:
-						plt.plot(T,P,'-',label=myproperty, linewidth=2)
+						plt.plot(T,P,'-',label=myproperty, linewidth=2, color=color)
 
-				plt.legend(numpoints=1)
-				plt.xlabel('Spinodal Line',fontsize=20)
-				plt.ylabel('Widom Line',fontsize=20)
+				plt.legend(numpoints=1,frameon=False,fontsize=10,loc='upper right')
+				plt.xlabel(xlabel,fontsize=20)
+				plt.ylabel(ylabel,fontsize=20)
+				if ylim is not None: plt.axes().set_ylim(ylim)
+				if xlim is not None: plt.axes().set_xlim(xlim)
 				#plt.axes().set_aspect('equal','datalim')
 				if not wait: plt.show() if not savefig else plt.savefig('RescaledPhaseDiagram.png',bbox_inches='tight',dpi=300)
 

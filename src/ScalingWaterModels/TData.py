@@ -56,7 +56,7 @@ class DataPt:
 
 
 class RawData:
-	def __init__(self, fn="compiledEOSAll"):
+	def __init__(self, fn="../Data/compiledEOSAll"):
 		x_T = np.loadtxt(fn,unpack=True,usecols=[0],skiprows=1)
 		x_P = np.loadtxt(fn,unpack=True,usecols=[1],skiprows=1)
 		x_Rho = np.loadtxt(fn,unpack=True,usecols=[2],skiprows=1)
