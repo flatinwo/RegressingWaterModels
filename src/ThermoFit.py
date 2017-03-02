@@ -28,6 +28,7 @@ class ThermoPPty:
 		self.Bg = np.zeros([5,5])
 		self.Ws = np.zeros([5,5])
 		self.Ls = np.zeros([5,5])
+		self.delw = 1.
 
 		self.fitparams = np.zeros(21)
 
@@ -151,21 +152,62 @@ class ThermoPPty:
 		self.Ls[1][0], self.Ls[1][2] = L0, b*L0
 		self.Ls[2][0] = f*L0
 
-		pass
+		w0 = x[5:6]
+		delw = self.delw
+		self.Ws[0][0], self.Ws[0][1] = 2.*delw, w0*delw
+		self.Ws[1][0], self.Ws[1][1] = 2.*(1-delw), (1-delw)*w0
 
+		bg = x[6:]
+		self.Bg[0][2], self.Bg[1][1], self.Bg[2][0] = bg[0], bg[1], bg[2]
+		self.Bg[0][3], self.Bg[1][2], self.Bg[2][1] = bg[3], bg[4], bg[5]
+		self.Bg[3][0], self.Bg[1][3], self.Bg[2][2] = bg[6], bg[7], bg[8]
+		self.Bg[3][1], self.Bg[4][0], self.Bg[0][4] = bg[9], bg[10],bg[11]
+
+
+	def residual(self,x,data):
+		res = 0
+		self.setValues(x)
+		for t,p,rho in data:
+			res += (rho - self.getDensity(t,p))**2
+		print(res)
+		return res
+
+
+
+from scipy.optimize import minimize, minimize_scalar
 
 class ThermoFit:
-	def __init__(self,model,minimizer):
+	def __init__(self,model,minimizer=minimize):
+		assert(isinstance(model,ThermoPPty))
 		self.model = model
 		self.minimizer = minimizer
 
-	def run(self):
+	def runAll(self):
 		pass
+
+	def runPerIsochore(self):
+		pass
+
+	def runIsochore(self,Density,x0,method="Nelder-Mead"):
+		if Density not in self.model.IsochoreDict:
+			print("Isochore chosen is unavailable.")
+		else:
+			data = []
+			for t in self.model.IsochoreDict[Density]:
+				data.append([t,self.model.IsochoreDict[Density][t],Density])
+			res = self.minimizer(self.model.residual,x0,
+								args=(data),
+								method=method,
+								options={'disp':True,
+								'maxfev':1000,
+								'disp':True})
+			np.savetxt('current_fit',res.x)
+
 
 
 if __name__ == "__main__":
-	myThermoFit = ThermoPPty(fn='./Data/pruned025compiledEOSAll')
-	start = True
+	myThermoPPty = ThermoPPty(fn='./Data/pruned025compiledEOSAll',Tc=213,Pc=338.,Rhoc=0.0595)
+	start = False
 	nLs, nWs , nBg, delw, f = 5, 1, 12, 1., 0.
 	x=np.zeros(nLs+nWs+nBg)
 	if start:
@@ -174,11 +216,17 @@ if __name__ == "__main__":
 		x[nLs+nWs:nLs+nWs+nBg] = [-0.00261876, 0.257249, -6.30589, 0.000605678,
 		0.0248091, -0.0400033, 2.18819, -0.000994166, -0.00840543, 0.0719058, -0.256674, 0.]
 	else:
-		x=np.loadtxt('current_fit')
+		x=np.loadtxt('./Data/current_fit_x2_06')
 
+	myThermoPPty.setValues(x)
 
-	print(myThermoFit)
+	print(myThermoPPty.__str__(T=273.,P=101.))
+	print(myThermoPPty.UniqueDensities)
 
+	tfit = ThermoFit(myThermoPPty)
+	tfit.runIsochore(Density=880.,x0=np.copy(x))
+
+	print(myThermoPPty.__str__(T=273.,P=101.))
 
 
 
