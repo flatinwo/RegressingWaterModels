@@ -1,6 +1,6 @@
 from GuggenWater import TIP4P2005,GuggenheimWater
 from TData import CriticalParams
-from load_data import *
+#from load_data import *
 import numpy as np
 from numpy.polynomial.polynomial import polyval2d,polyval
 from numpy import poly1d
@@ -65,7 +65,7 @@ class GuggenModel(GuggenheimWater):
 if __name__ == "__main__":
 	ty = ToyModel(1.,1.)
 	gw = GuggenModel(ty)
-	Data = load_data(filename="../Data/a2_03_3.pkl")
+	"""Data = load_data(filename="../Data/a2_03_3.pkl")
 
 	for ppty in Data:
 		T,P = Data[ppty]
@@ -130,7 +130,7 @@ if __name__ == "__main__":
 		ylabel="Pressure",
 		xlim=(-1.0,1.0),
 		ylim=(-10,20),
-		style="seaborn-colorblind", wait=False)
+		style="seaborn-colorblind", wait=False)"""
 
 
 

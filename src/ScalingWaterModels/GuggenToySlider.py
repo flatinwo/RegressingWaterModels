@@ -4,8 +4,14 @@ from matplotlib import rc
 from matplotlib.widgets import Slider, Button, RadioButtons
 from load_data import *
 
-Data1 = load_data(filename="../Data/a2_01_3.pkl")
-Data2 = load_data(filename="../Data/a2_03_3.pkl")
+classic = False
+
+if classic:
+	Data1 = load_data(filename="../Data/a2_01_3.pkl")
+	Data2 = load_data(filename="../Data/a2_03_3.pkl")
+else:
+	Data1 = load_data_and_rescale(filename="../Data/a2_01_3.pkl",a2=-0.1)
+	Data2 = load_data_and_rescale(filename="../Data/a2_03_3.pkl",a2=-0.3)
 
 rc('ytick',labelsize=20)
 rc('xtick',labelsize=20)
@@ -28,14 +34,17 @@ x42,y42 = Data2["KtM"]
 x51,y51 = Data1["LLCP"]
 x52,y52 = Data2["LLCP"]
 
-x61 = y61 = 1.0
-x62 = y62 = 1.0
+x61,y61 = Data1["VLCP"]
+x62,y62 = Data2["VLCP"]
 
-i1=j1=i2=j2=1.
+#x61 = y61 = 1.0
+#x62 = y62 = 1.0
+
+i1=j1=i2=j2=0.
 #k1=l1=k2=l2=1.
 
-k1,l1 = np.max(x01)-x51, y51-np.min(y01)
-k2,l2 = np.max(x02)-x52, y52-np.min(y02)
+k1,l1 = 1.,1.#np.max(x01)-x51, y51-np.min(y01)
+k2,l2 = 1.,1. #np.max(x02)-x52, y52-np.min(y02)
 
 fig, ax = plt.subplots(figsize=(10,10))
 plt.subplots_adjust(left=0.25,bottom=0.30)
@@ -61,8 +70,8 @@ plt.xlabel('Temperature',fontsize=24)
 plt.ylabel('Pressure',fontsize=24)
 plt.legend(frameon=False,loc='upper right')
 
-ax.set_ylim(-3.,2.)
-#ax.set_xlim(0.,1.5)
+ax.set_ylim(-10.,10.)
+ax.set_xlim(-1.0,1.)
 
 axcolor = 'lightgoldenrodyellow'
 axPscale = plt.axes([0.25,0.15,0.65,0.03],axisbg=axcolor)

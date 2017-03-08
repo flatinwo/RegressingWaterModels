@@ -1,5 +1,6 @@
 import pickle
 import numpy as np
+from GuggenToy import ToyModel, GuggenModel
 
 def load_data(filename="../Data/a2_003_3.pkl"):
 	Data = open (filename, 'rb')
@@ -23,11 +24,40 @@ def load_data(filename="../Data/a2_003_3.pkl"):
 	AllData["LLT"] = np.array([Tllt,Pllt])
 	AllData["LLW"] = np.array([Tllw,Pllw])
 	AllData["LLCP"] = np.array([Tc,Pc])
+	AllData["VLCP"] = np.array([1.0,1.0])
 
 
 	return AllData
 
 
+def load_data_and_rescale(filename="../Data/a2_003_3.pkl",a2=-0.3):
+	Data = load_data(filename)
+	ty = ToyModel(1.,1.,a2)
+	gw = GuggenModel(ty)
+
+	for ppty in Data:
+		T,P = Data[ppty]
+		try: 
+			for t,p in zip(T,P): gw.addPoint(t,p,ppty,Source="Unknown",callback="delineateSpinodalandWidomLine")
+		except:
+			pass
+			#gw.addPoint(T,P,ppty,Source="Unknown",callback="delineateSpinodalandWidomLine")
+	
+	ppties=["LLCP","VLCP"]
+	for ppty in ppties:
+		T,P = Data[ppty]
+		gw.addPoint(T,P,ppty,Source="Unknown",callback="delineateSpinodalandWidomLine")
+
+	AllData = {}
+	for property in gw.PropertyDict:
+		rT = [gw.PropertyDict[property][i][0] for i in range(len(gw.PropertyDict[property]))]
+		rP = [gw.PropertyDict[property][i][1] for i in range(len(gw.PropertyDict[property]))]
+		AllData[property] = np.array([rT,rP])
+
+	return AllData
+
+
 if __name__ == "__main__":
-	Data = load_data()
+	Data1 = load_data()
+	Data2 = load_data_and_rescale() 
 
