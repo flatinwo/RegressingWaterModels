@@ -9,3 +9,4 @@ try to match location of reduced pressure for critical point
 two part
 P/Pc and P-Ps
 determine crossover point by continuity between P/Pc = (P-Ps)/(ref. Pc molecule)
+use a switch based on extrema of extrema, such that each point is rescaled

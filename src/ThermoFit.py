@@ -175,7 +175,9 @@ class ThermoPPty:
 
 
 from scipy.optimize import minimize, minimize_scalar
-
+#implement constraints
+# constraints : dict or sequence of dict, optional
+#Constraints definition (only for COBYLA and SLSQP). Each constraint is defined in a dictionary with fields:
 class ThermoFit:
 	def __init__(self,model,minimizer=minimize):
 		assert(isinstance(model,ThermoPPty))
