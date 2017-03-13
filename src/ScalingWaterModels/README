@@ -10,3 +10,4 @@ two part
 P/Pc and P-Ps
 determine crossover point by continuity between P/Pc = (P-Ps)/(ref. Pc molecule)
 use a switch based on extrema of extrema, such that each point is rescaled
+consider dimensionality reduction method to brute force problem
