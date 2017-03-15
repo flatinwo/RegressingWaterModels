@@ -15,10 +15,14 @@ def getXs(cxy,x,y):
 
 
 class ThermoPPty:
-	def __init__(self,fn='./Data/compiledEOSAll', Tc=200, Pc=200, Rhoc=1.,Tl=230.):
-		sf = od.SpinodalFit(fn,Tl) #Maybe i don't need this as a member fxn
-		sf.setCriticalPt(Tc,Pc,Rhoc) #But ensures I have the same criticalpt
-		sf.fit()
+	def __init__(self,fn='./Data/compiledEOSAll', Tc=200, Pc=200, Rhoc=1.,Tl=230.,spinodal=None):
+		if not spinodal:
+			sf = od.SpinodalFit(fn,Tl) #Maybe i don't need this as a member fxn
+			sf.setCriticalPt(Tc,Pc,Rhoc) #But ensures I have the same criticalpt
+			sf.fit()
+		else:
+			assert isinstance(spinodal,od.SpinodalFit)
+			sf = spinodal
 
 		self.compute = False
 		self.criticalpt = ts.CriticalParams(Tc,Pc,Rhoc)
@@ -41,14 +45,14 @@ class ThermoPPty:
 		
 		self.f = lambda x, p : p[0]*x + p[1]*(x*np.log(x) + (1-x)*np.log(1-x)) + p[2]*x*(1-x)
 
-	def getPressure(self,T=200.,Density=1000, guess=True, Pguess=0., dRho=20.):
+	def getPressure(self,T=200.,Density=1000, override_guess=False, Pguess=0., dRho=20.):
 		my_nearest = lambda array, value : array[np.abs(array-value).argmin()]
 		RhoMax = my_nearest(self.UniqueDensities,Density+dRho)
 		
 		Tn = my_nearest(np.array(list(self.IsochoreDict[RhoMax].keys())),T)
 		Pmax = self.IsochoreDict[RhoMax][Tn]
-		myres = lambda P: Rho - self.getDensity(T,P,False)
-		if not guess: Pmax = Pguess
+		myres = lambda P: Density - self.getDensity(T,P,False)
+		if override_guess: Pmax = Pguess
 		plsq = leastsq(myres,Pmax)
 		return plsq[0]
 
@@ -104,6 +108,7 @@ class ThermoPPty:
 		Pshat,S0 = self.criticalpt.reduceP(np.array([Ps,self.cS[0]]))
 		PminusPhat = Phat - Pshat
 
+
 		if PminusPhat < 0: PminusPhat=0.
 		if S0 > 0: print("there was a numerical error with spinodal")
 		
@@ -113,10 +118,14 @@ class ThermoPPty:
 		L, Lt, Lp, Ltt, Ltp, Lpp = getXs(self.Ls,That,Phat)
 		W, Wt, Wp, Wtt, Wtp, Wpp = getXs(self.Ws,tau,Phat)
 
-		params = np.array([L,W,tau,Phat])
+		params = np.array([L,tau,W,Phat])
 		x = self.x = self.getEquibConc(params)
+
+
+		#x = 0.93127849869435763
 		dxdt = self.dxdt = (Lt + np.log(x/(1-x)) + Wt*(1.-2*x))/(2*W - tau/(x*(1.0-x)))
 		dxdp = self.dxdp = (Lp + Wp*(1-2*x))/(2*W - tau/(x*(1-x)))
+
 
 		#dGA/dP
 		Bp = polyval2d(That,Phat,polyder(self.Bg,axis=1))
@@ -127,7 +136,7 @@ class ThermoPPty:
 		Btp = polyval2d(That,Phat,polyder(polyder(self.Bg,axis=0),axis=1))
 
 		#response functions
-		v = self.v = Bp + Vs + Wp*x*(1-x) # volume in dim units
+		v = self.v = Bp + Vs + x*Lp + Wp*x*(1-x) # volume in dim units
 		kt = self.kt = (-1./v)*(Bpp + x*tau*Lpp + tau*Wpp*x*(1-x) + (tau*Lp + tau*Wp*(1.-2*x))*dxdp) #compressibility
 		cp = self.cp = -tau*(Btt + 2*x*Lt + 2*x*(1.-x)*Wt + tau*x*Ltt + tau*Wtt*x*(1-x) + (tau*Lt + tau*(1.-2.*x)*Wt)*dxdt) #heat capacity
 		ap = self.ap = (1./v)*(Btp + x*Lp + x*tau*Ltp + Wp*x*(1.-x) + tau*Wtp*x*(1.-x) + (tau*Lp + tau*Wp*(1.-2.*x))*dxdt)
@@ -149,7 +158,7 @@ class ThermoPPty:
 	def setValues(self, x):
 		L0, a, b, d, f = x[0:5]
 		self.Ls[0][1], self.Ls[0][2] = a*L0, d*L0
-		self.Ls[1][0], self.Ls[1][2] = L0, b*L0
+		self.Ls[1][0], self.Ls[1][1] = L0, b*L0
 		self.Ls[2][0] = f*L0
 
 		w0 = x[5:6]
@@ -190,13 +199,18 @@ class ThermoFit:
 	def runPerIsochore(self):
 		pass
 
-	def runIsochore(self,Density,x0,method="Nelder-Mead"):
+	def runIsochore(self,Density,x0,method="Nelder-Mead",figure=True):
 		if Density not in self.model.IsochoreDict:
 			print("Isochore chosen is unavailable.")
 		else:
 			data = []
+			T_obs = []
+			P_obs = []
 			for t in self.model.IsochoreDict[Density]:
 				data.append([t,self.model.IsochoreDict[Density][t],Density])
+				T_obs.append(t)
+				P_obs.append(self.model.IsochoreDict[Density][t])
+			
 			res = self.minimizer(self.model.residual,x0,
 								args=(data),
 								method=method,
@@ -204,6 +218,17 @@ class ThermoFit:
 								'maxfev':1000,
 								'disp':True})
 			np.savetxt('current_fit',res.x)
+			if figure:
+				import matplotlib.pyplot as plt
+				T = np.linspace(213.,350.,400)
+				P_pred = []
+				self.model.setValues(res.x)
+				for t in T:
+					P_pred.append(self.model.getPressure(T=t,Density=Density,dRho=0.))
+				plt.plot(T_obs,P_obs,'o')
+				plt.plot(T,P_pred,'-')
+				plt.show()
+
 
 
 
@@ -219,6 +244,7 @@ if __name__ == "__main__":
 		0.0248091, -0.0400033, 2.18819, -0.000994166, -0.00840543, 0.0719058, -0.256674, 0.]
 	else:
 		x=np.loadtxt('./Data/current_fit_x2_06')
+		x=np.loadtxt('./current_fit')
 
 	myThermoPPty.setValues(x)
 
@@ -226,7 +252,7 @@ if __name__ == "__main__":
 	print(myThermoPPty.UniqueDensities)
 
 	tfit = ThermoFit(myThermoPPty)
-	tfit.runIsochore(Density=880.,x0=np.copy(x))
+	tfit.runIsochore(Density=1120.,x0=np.copy(x))
 
 	print(myThermoPPty.__str__(T=273.,P=101.))
 
