@@ -30,7 +30,7 @@ def load_data(filename="../Data/a2_003_3.pkl"):
 	return AllData
 
 
-def load_data_and_rescale(filename="../Data/a2_003_3.pkl",a2=-0.3):
+def load_data_and_rescale(filename="../Data/a2_003_3.pkl",a2=-0.3,callback="delineateSpinodalandWidomLine",writeFile=None):
 	Data = load_data(filename)
 	ty = ToyModel(1.,1.,a2)
 	gw = GuggenModel(ty)
@@ -38,7 +38,7 @@ def load_data_and_rescale(filename="../Data/a2_003_3.pkl",a2=-0.3):
 	for ppty in Data:
 		T,P = Data[ppty]
 		try: 
-			for t,p in zip(T,P): gw.addPoint(t,p,ppty,Source="Unknown",callback="delineateSpinodalandWidomLine")
+			for t,p in zip(T,P): gw.addPoint(t,p,ppty,Source="Unknown",callback=callback)
 		except:
 			pass
 			#gw.addPoint(T,P,ppty,Source="Unknown",callback="delineateSpinodalandWidomLine")
@@ -46,7 +46,7 @@ def load_data_and_rescale(filename="../Data/a2_003_3.pkl",a2=-0.3):
 	ppties=["LLCP","VLCP"]
 	for ppty in ppties:
 		T,P = Data[ppty]
-		gw.addPoint(T,P,ppty,Source="Unknown",callback="delineateSpinodalandWidomLine")
+		gw.addPoint(T,P,ppty,Source="Unknown",callback=callback)
 
 	AllData = {}
 	for property in gw.PropertyDict:
@@ -54,10 +54,15 @@ def load_data_and_rescale(filename="../Data/a2_003_3.pkl",a2=-0.3):
 		rP = [gw.PropertyDict[property][i][1] for i in range(len(gw.PropertyDict[property]))]
 		AllData[property] = np.array([rT,rP])
 
+	if writeFile is not None:
+		gw.writetoFile(filename=writeFile,isnew=True, add_critical_pt=False,offsetCriticalPt=1.,callback="rescale")
+
 	return AllData
 
 
 if __name__ == "__main__":
 	Data1 = load_data()
 	Data2 = load_data_and_rescale() 
+	Data3 = load_data_and_rescale(callback="identity",writeFile="RescaledModel.dat")
+
 

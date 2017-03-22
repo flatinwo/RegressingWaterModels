@@ -49,6 +49,14 @@ class TIP4P2005:
 			else:
 				return float(newT)
 
+	def writeWidomLine(self,filename="Widom.dat",P=[]):
+		import pandas as pd
+		data = [[self.WidomTemperature(p),p,"Widom","TSEOS"] for p in P]
+		df = pd.DataFrame(data,columns=['Temperature(K)',
+			'Pressure (MPa)', 'Feature', 'Source'])
+		df.to_csv(filename,sep="\t",index=False,header=False)
+
+
 
 class ST2I_mean_field(TIP4P2005):
 	def __init__(self,CP=CriticalParams(253.5,160.,0.052478)):
