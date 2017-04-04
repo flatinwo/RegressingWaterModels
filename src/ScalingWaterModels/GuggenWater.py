@@ -90,6 +90,17 @@ class GuggenheimWater:
 			Tr, Pr = (T-Tw)/100., P/Pc
 		return Tr, Pr
 
+	def classic(self,T,P):
+		Tc,Pc = self.model.CriticalParams.Tc, self.model.CriticalParams.Pc
+		return T/Tc, P/Pc
+
+	def classicAndWidom(self,T,P):
+		Tc,Pc = self.model.CriticalParams.Tc, self.model.CriticalParams.Pc
+		return (T-self.model.WidomTemperature(P)), P/Pc
+
+	def delineateKT(self,T,P):
+		pass
+
 	def delineateSpinodal(self,T,P):
 		return T, P - self.model.SpinodalPressure(T)
 
@@ -131,8 +142,8 @@ class GuggenheimWater:
 		try:
 			func = getattr(self,str(callback))
 		except:
-			print("Callback function error, valid options are: delineateSpiondal\ndelineateWidomLine\n"\
-				"delineateSpinodalandWidomLine\ndelineateCriticalPoint")
+			print("Callback function error, valid options are:\ndelineateSpiondal\ndelineateWidomLine\n"\
+				"delineateSpinodalandWidomLine\ndelineateCriticalPoint\nclassic\nclassicAndWidom\n")
 			exit(-1)
 		x,y = func(T,P)
 		self.Trescale.append(x)
