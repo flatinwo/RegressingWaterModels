@@ -31,7 +31,7 @@ class SpinodalFit(OneDFit):
 		self.fitParams['A(T) params'] = 0.
 		self.setUpLog = False
 		self.order0=2 # this is a polynomial for P vs V, change at your own risk
-		self.order1=2 # analysis of anova shows that quadratic fit here is stat sig.
+		self.order1=1 # 2 is what analysis of anova shows that quadratic fit here is stat sig.
 		self.countsl=5 # optimized number of observations to select
 
 	def setFitInfo(self):

@@ -1,0 +1,717 @@
+---
+title: "Unsupervised Learning of Liquid Polyamorphism"
+author: "Folarin Latinwo"
+date: "3/27/2017"
+output: pdf_document
+---
+
+#TODO next: plot with respect to compressibility max and min. set origin at transition, and set axis at max (abs) slope
+
+#TODO consider PCA with the same number of points
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse) #dplyr
+library(FactoMineR) #MCA and PCA
+```
+
+Synopsis
+---
+Here, we will analyze the repsonse functions for systems that show liquid polyamorphism using techniques from machine learning. Specifically, the goal is to identify the essential (or generic) features that describe the properties of such systems using PCA and MCA. The models considered are the TIP4P2005, ST2, and Lattice Gas with chemical reaction.
+
+## TIP4P2005 and ST2
+
+Load the data
+```{r}
+TIP4P2005 <- read.table("../src/ScalingWaterModels/Features.dat",
+                        header=T, stringsAsFactors = F) %>% as_tibble()
+ST2 <- read.table("../src/ScalingWaterModels/FeaturesST2Widom.dat",
+                        header=T, stringsAsFactors = F) %>% as_tibble()
+
+TIP5P <- read.table("../src/ScalingWaterModels/FeaturesTIP5P.dat",
+                        header=T, stringsAsFactors = F) %>% as_tibble()
+```
+
+
+What are the column names?
+```{r}
+names(TIP4P2005)
+names(ST2)
+names(TIP5P)<-c("Pressure","Temperature","Feature","Source")
+#TIP5P$Source <- "MD"
+```
+
+What are the distinct Sources?
+```{r}
+TIP4P2005 %>% distinct(Feature)
+TIP5P %>% distinct(Feature)
+```
+
+```{r}
+TIP4P2005$Feature[TIP4P2005$Feature == "TminHighP"] <- "Tmin"
+```
+
+Combine both models
+```{r}
+TIP4P2005$Model <- "TIP4P2005"
+ST2$Model <- "ST2"
+TIP5P$Model <- "TIP5P"
+
+# Filter strange points
+TIP5Pn <- TIP5P %>% filter(Temperature < 300., Pressure > -125.)
+
+spn <- function(x){ t = (x-253.5)/253.5; return(-284.38 + 628.41*t - 720.12*t*t) }
+t<-seq(225,350)
+stT<-data.frame(Temperature=t,Pressure=spn(t))
+stT$Feature<-"Spinodal"
+stT$Model<-"ST2"
+stT$Source<-"TSEOS"
+#eqnTIP5P
+
+WaterModels <- rbind(TIP4P2005,ST2,TIP5Pn,stT)
+```
+
+
+### State of the Art
+
+```{r include=FALSE}
+library(latex2exp)
+plot(TeX("A $\\c_p^{max} \\, \\c_p^{min} \\, \\kappa_T^{max} \\kappa_T^{min} \\llt \\vls \\T^{max}_{\\rho}  \\T^{min}_{\\rho} \\llw $ formula: $\\frac{2hc^2}{\\lambda^5} \\, 
+               \\frac{1}{e^{\\frac{hc}{\\lambda k_B T}} - 1}$"), cex=2)
+```
+
+
+Let us take a look at the original data for TIP4P2005
+```{r fig.width=10,fig.height=11}
+library(ggplot2)
+theme_set(theme_bw(base_size = 24))
+WaterModels %>% filter(Source=="TSEOS"|Source=="Poole"|Source=="MD") %>%
+  ggplot(mapping=aes(Temperature,Pressure,color=factor(Feature))) +
+  geom_point(size=2) + 
+  facet_grid(.~Model) +
+  geom_point(data =subset(WaterModels,Feature=="LLCP"),
+             aes(x = Temperature, y = Pressure), size = 8, shape=21,fill="white",
+             show.legend=FALSE,stroke=3) +
+  scale_color_discrete(name="",
+                       labels=lapply(c("$\\c_p^{max}$",
+                                       "$\\c_p^{min}$",
+                                       "$\\kappa_T^{max}$",
+                                       "$\\kappa_T^{min}$",
+                                       "llcp","llt", "vls",
+                                       "$\\T^{max}_{\\rho}$",
+                                       "$\\T^{min}_{\\rho}$",
+                                       "llw"),TeX)) +
+  guides(col=guide_legend(nrow=5)) +
+  theme(legend.position=c(0.05,0.85),
+        aspect.ratio=1,legend.background=element_rect(fill=NA),
+        strip.background = element_blank(),
+       strip.text.x = element_blank())+
+  xlim(150,400) + ylim(-500,475) +
+  geom_text(data=data.frame(x=325,y=-400,Model=c("ST2","TIP4P2005","TIP5P")),
+            aes(x,y,label=Model),inherit.aes = F,size=10) +
+  xlab("Temperature (K)") + ylab("Pressure (MPa)")
+
+ggsave("TIP4P2005ST2TIP5PFacetGridRaw.pdf")
+
+#Next plot Widom-Line Spinodal
+#Then P/Pc and T/Tc
+#Then compressibility resaling
+
+```
+
+
+
+```{r fig.width=4, fig.height=4}
+#Lattice Gas with Reaction Scaling
+library(ggplot2)
+
+LGRXNModels_1 <- read.table("../src/ScalingWaterModels/LGRXN-All.dat",header=T) %>% as_tibble()
+LGRXNModels_2 <- read.table("../src/ScalingWaterModels/LGRXN-All-2.dat",header=T) %>% as_tibble()
+LGRXNModels_3 <- read.table("../src/ScalingWaterModels/LGRXN-All-3.dat",header=T) %>% as_tibble()
+
+LG <- rbind(LGRXNModels_2,LGRXNModels_1,LGRXNModels_3)
+theme_set(theme_bw(base_size = 24))
+LG %>% 
+  ggplot() + geom_path(aes(Temperature,Pressure,color=Property),size=1.1) +
+  facet_grid(~Source) +
+
+  geom_point(data =subset(LG,Property=="LLCP"),
+             aes(x = Temperature, y = Pressure), size = 3., shape=21,fill="white",
+             show.legend=F,inherit.aes=F,stroke=1) +
+  scale_color_discrete(name="", labels=lapply(c("$\\c_p^{ext.}$",
+                                       "$\\kappa_T^{ext.}$","LLCP",
+                                       "LLT", "WL","LVS",
+                                       "$\\T^{ext.}_{\\rho}$"),TeX)) +
+  guides(col=guide_legend(nrow=4),
+         shape=guide_legend(ncol=1)) +
+  theme(legend.position=c(0.11,0.825),legend.text=element_text(size=12),
+        aspect.ratio=1,legend.background=element_rect(fill=NA),
+        strip.background = element_blank(),
+       strip.text.x = element_blank()) +
+   scale_x_continuous(name=expression(italic("T")),breaks=c(0.0,0.5,1.0)) +
+   ylab(expression(italic("P")))
+ggsave("LatticeGasModelsRawSmaller.pdf")
+```
+
+
+
+
+# Interaction between Widom and Spinodal Line scaling
+Now we consider the case for which the the driving force is the spinodal and the widom line. Do not distinguish between Tmin and TminHighP
+```{r}
+rWaterModels <- read.table("../src/ScalingWaterModels/Combined-07/All-1.dat",
+                        header=T, stringsAsFactors = F) %>% as_tibble()
+rWaterModels$Property[rWaterModels$Property == "TminHighP"] <- "Tmin"
+rWaterModels$Property[rWaterModels$Property == "KtMax"] <- "Ktmax"
+rWaterModels %>% distinct(Property)
+
+```
+
+Now display both models.
+```{r fig.width=10,fig.height=11}
+library(ggplot2)
+myshapes<-rep(16,10)
+myshapes[5]<-21
+theme_set(theme_bw(base_size = 20))
+rWaterModels %>% filter(Source=="TSEOS"|Source=="Poole") %>%
+  ggplot(mapping=aes(Temperature,Pressure,color=factor(Property))) +
+  geom_point(size=2) + 
+  facet_grid(Model~.) +
+  geom_point(data =subset(rWaterModels,Property=="LLCP"),
+             aes(x = Temperature, y = Pressure), size = 8, shape=21,fill="white",
+             show.legend=FALSE,stroke=3) +
+  guides(col=guide_legend(nrow=5,override.aes = list(size=4,shape=myshapes))) +
+  scale_color_discrete(name="", labels=lapply(c("$\\c_p^{max}$",
+                                       "$\\c_p^{min}$",
+                                       "$\\kappa_T^{max}$",
+                                       "$\\kappa_T^{min}$",
+                                       "llcp","llt", "vls",
+                                       "$\\T^{max}_{\\rho}$",
+                                       "$\\T^{min}_{\\rho}$",
+                                       "llw"),TeX) ) +
+  theme(legend.position=c(0.25,0.90),
+        aspect.ratio=1,legend.background=element_rect(fill=NA),
+        strip.background = element_blank(),
+       strip.text.y = element_blank()) +
+  xlab("Temperature (K)") + ylab("Pressure (MPa)") +
+  geom_text(data=data.frame(x=-100,y=100,Model=c("ST2","TIP4P2005")),
+            aes(x,y,label=Model),inherit.aes = F,size=8)
+#ggsave("TIP4P2005ST2FacetGridRescaled.pdf")
+```
+
+
+```{r fig.width=6,fig.height=6}
+library(ggplot2)
+myshapes<-rep(16,10)
+myshapes[5]<-21
+theme_set(theme_bw(base_size = 30))
+rWaterModels %>% filter(Source=="TSEOS"|Source=="Poole") %>%
+  ggplot(mapping=aes(Temperature,Pressure,color=factor(Property),shape=Model)) +
+  geom_point(size=3) +
+  geom_point(data =subset(rWaterModels,Property=="LLCP"),
+             aes(x = Temperature, y = Pressure), size = 8, shape=c(21,24),fill="white",
+             show.legend=FALSE,stroke=3) +
+  guides(col=guide_legend(nrow=5,override.aes = list(size=3,shape=myshapes)),
+         shape=guide_legend(ncol=1)) +
+  scale_color_discrete(name="", labels=lapply(c("$\\c_p^{max}$",
+                                       "$\\c_p^{min}$",
+                                       "$\\kappa_T^{max}$",
+                                       "$\\kappa_T^{min}$",
+                                       "llcp","llt", "vls",
+                                       "$\\T^{max}_{\\rho}$",
+                                       "$\\T^{min}_{\\rho}$",
+                                       "llw"),TeX) ) +
+  theme(legend.position=c(0.15,0.70),
+        aspect.ratio=1,legend.background=element_rect(fill=NA),
+        strip.background = element_blank(),
+       strip.text.y = element_blank()) +
+  xlab(TeX("$\\T-T_w\\,(K) $")) + ylab(TeX("$\\P-P_s\\,(MPa) $"))
+ggsave("TIP4P2005ST2Rescaled.pdf")
+```
+# Classic approach to scaling
+
+```{r}
+rWaterModelsC <- read.table("../src/ScalingWaterModels/Combined-11/All-1.dat",
+                        header=T, stringsAsFactors = F) %>% as_tibble()
+rWaterModelsC$Property[rWaterModelsC$Property == "TminHighP"] <- "Tmin"
+rWaterModelsC$Property[rWaterModelsC$Property == "KtMax"] <- "Ktmax"
+rWaterModelsC %>% distinct(Property)
+
+```
+
+Now display both models.
+```{r fig.width=10,fig.height=11}
+library(ggplot2)
+myshapes<-rep(16,10)
+myshapes[5]<-21
+theme_set(theme_bw(base_size = 20))
+rWaterModelsC %>% filter(Source=="TSEOS"|Source=="Poole") %>%
+  ggplot(mapping=aes(Temperature,Pressure,color=factor(Property))) +
+  geom_point(size=2) + 
+  facet_grid(Model~.) +
+  geom_point(data =subset(rWaterModelsC,Property=="LLCP"),
+             aes(x = Temperature, y = Pressure), size = 8, shape=21,fill="white",
+             show.legend=FALSE,stroke=3) +
+  guides(col=guide_legend(nrow=5,override.aes = list(size=4,shape=myshapes))) +
+  scale_color_discrete(name="", labels=lapply(c("$\\c_p^{max}$",
+                                       "$\\c_p^{min}$",
+                                       "$\\kappa_T^{max}$",
+                                       "$\\kappa_T^{min}$",
+                                       "llcp","llt", "vls",
+                                       "$\\T^{max}_{\\rho}$",
+                                       "$\\T^{min}_{\\rho}$",
+                                       "llw"),TeX) ) +
+  theme(legend.position=c(0.75,0.90),
+        aspect.ratio=1,legend.background=element_rect(fill=NA),
+        strip.background = element_blank(),
+       strip.text.y = element_blank()) +
+  xlab("T/Tc") + ylab("P/Pc") +
+  geom_text(data=data.frame(x=1.75,y=-2,Model=c("ST2","TIP4P2005")),
+            aes(x,y,label=Model),inherit.aes = F,size=8)
+ggsave("TIP4P2005ST2FacetGridClassic.pdf")
+```
+
+Property together
+```{r fig.width=6,fig.height=6}
+library(ggplot2)
+myshapes<-rep(16,10)
+myshapes[5]<-21
+theme_set(theme_bw(base_size = 20))
+rWaterModelsC %>% filter(Source=="TSEOS"|Source=="Poole") %>%
+  ggplot(mapping=aes(Temperature,Pressure,color=factor(Property),shape=Model)) +
+  geom_point(size=2) +
+  geom_point(data =subset(rWaterModelsC,Property=="LLCP"),
+             aes(x = Temperature, y = Pressure), size = 8, shape=c(21,24),fill="white",
+             show.legend=FALSE,stroke=3) +
+  guides(col=guide_legend(nrow=5,override.aes = list(size=3,shape=myshapes)),
+         shape=guide_legend(ncol=1)) +
+  scale_color_discrete(name="", labels=lapply(c("$\\c_p^{max}$",
+                                       "$\\c_p^{min}$",
+                                       "$\\kappa_T^{max}$",
+                                       "$\\kappa_T^{min}$",
+                                       "llcp","llt", "vls",
+                                       "$\\T^{max}_{\\rho}$",
+                                       "$\\T^{min}_{\\rho}$",
+                                       "llw"),TeX) ) +
+  theme(legend.position=c(0.85,0.70),
+        aspect.ratio=1,legend.background=element_rect(fill=NA),
+        strip.background = element_blank(),
+       strip.text.y = element_blank()) +
+  xlab(TeX("$\\T/T_c$")) + ylab(TeX("$\\P/P_c"))
+ggsave("TIP4P2005ST2Classic.pdf")
+```
+
+
+# Classic approach to scaling
+
+```{r}
+rWaterModelsCW <- read.table("../src/ScalingWaterModels/Combined-12/All-1.dat",
+                        header=T, stringsAsFactors = F) %>% as_tibble()
+rWaterModelsCW$Property[rWaterModelsCW$Property == "TminHighP"] <- "Tmin"
+rWaterModelsCW$Property[rWaterModelsCW$Property == "KtMax"] <- "Ktmax"
+rWaterModelsCW %>% distinct(Property)
+
+```
+
+
+Now display both models.
+```{r fig.width=10,fig.height=11}
+library(ggplot2)
+myshapes<-rep(16,10)
+myshapes[5]<-21
+theme_set(theme_bw(base_size = 20))
+rWaterModelsCW %>% filter(Source=="TSEOS"|Source=="Poole") %>%
+  ggplot(mapping=aes(Temperature,Pressure,color=factor(Property))) +
+  geom_point(size=2) + 
+  facet_grid(Model~.) +
+  geom_point(data =subset(rWaterModelsCW,Property=="LLCP"),
+             aes(x = Temperature, y = Pressure), size = 8, shape=21,fill="white",
+             show.legend=FALSE,stroke=3) +
+  guides(col=guide_legend(nrow=5,override.aes = list(size=4,shape=myshapes))) +
+  scale_color_discrete(name="", labels=lapply(c("$\\c_p^{max}$",
+                                       "$\\c_p^{min}$",
+                                       "$\\kappa_T^{max}$",
+                                       "$\\kappa_T^{min}$",
+                                       "llcp","llt", "vls",
+                                       "$\\T^{max}_{\\rho}$",
+                                       "$\\T^{min}_{\\rho}$",
+                                       "llw"),TeX) ) +
+  theme(legend.position=c(0.25,0.90),
+        aspect.ratio=1,legend.background=element_rect(fill=NA),
+        strip.background = element_blank(),
+       strip.text.y = element_blank()) +
+  xlab(TeX("$\\T-T_w$")) + ylab(TeX("$\\P/P_c$")) +
+  geom_text(data=data.frame(x=50,y=-2,Model=c("ST2","TIP4P2005")),
+            aes(x,y,label=Model),inherit.aes = F,size=8)
+ggsave("TIP4P2005ST2FacetGridClassicWidom.pdf")
+```
+
+Property together
+```{r fig.width=6,fig.height=6}
+library(ggplot2)
+myshapes<-rep(16,10)
+myshapes[5]<-21
+theme_set(theme_bw(base_size = 20))
+rWaterModelsCW %>% filter(Source=="TSEOS"|Source=="Poole") %>%
+  ggplot(mapping=aes(Temperature,Pressure,color=factor(Property),shape=Model)) +
+  geom_point(size=2) +
+  geom_point(data =subset(rWaterModelsCW,Property=="LLCP"),
+             aes(x = Temperature, y = Pressure), size = 8, shape=c(21,24),fill="white",
+             show.legend=FALSE,stroke=3) +
+  guides(col=guide_legend(nrow=5,override.aes = list(size=3,shape=myshapes)),
+         shape=guide_legend(ncol=1)) +
+  scale_color_discrete(name="", labels=lapply(c("$\\c_p^{max}$",
+                                       "$\\c_p^{min}$",
+                                       "$\\kappa_T^{max}$",
+                                       "$\\kappa_T^{min}$",
+                                       "llcp","llt", "vls",
+                                       "$\\T^{max}_{\\rho}$",
+                                       "$\\T^{min}_{\\rho}$",
+                                       "llw"),TeX) ) +
+  theme(legend.position=c(0.20,0.70),
+        aspect.ratio=1,legend.background=element_rect(fill=NA),
+        strip.background = element_blank(),
+       strip.text.y = element_blank()) +
+  xlab(TeX("$\\T-T_w$")) + ylab(TeX("$\\P/P_c"))
+ggsave("TIP4P2005ST2ClassicWidom.pdf")
+```
+
+
+# Classic approach to scaling
+
+```{r}
+fn <- "../src/ScalingWaterModels/Combined-13/All-1.dat"
+fn <- "../src/ScalingWaterModels/All.dat"
+rWaterModelsCW <- read.table(fn,
+                        header=T, stringsAsFactors = F) %>% as_tibble()
+rWaterModelsCW$Property[rWaterModelsCW$Property == "TminHighP"] <- "Tmin"
+rWaterModelsCW$Property[rWaterModelsCW$Property == "KtMax"] <- "Ktmax"
+rWaterModelsCW %>% distinct(Source)
+```
+
+Now display both models.
+```{r fig.width=10,fig.height=11}
+library(ggplot2)
+myshapes<-rep(16,10)
+myshapes[5]<-21
+theme_set(theme_bw(base_size = 20))
+rWaterModelsCW %>% filter(Source=="TSEOS"|Source=="Poole"|Source=="LGRXN") %>%
+  ggplot(mapping=aes(Temperature,Pressure,color=factor(Property))) +
+  geom_point(size=2) + 
+  facet_grid(~Model) +
+  geom_point(data =subset(rWaterModelsCW,Property=="LLCP"),
+             aes(x = Temperature, y = Pressure), size = 8, shape=21,fill="white",
+             show.legend=FALSE,stroke=3) +
+  guides(col=guide_legend(nrow=5,override.aes = list(size=4,shape=myshapes))) +
+  scale_color_discrete(name="", labels=lapply(c("$\\c_p^{max}$",
+                                       "$\\c_p^{min}$",
+                                       "$\\kappa_T^{max}$",
+                                       "$\\kappa_T^{min}$",
+                                       "llcp","llt", "vls",
+                                       "$\\T^{max}_{\\rho}$",
+                                       "$\\T^{min}_{\\rho}$",
+                                       "llw"),TeX) ) +
+  theme(legend.position=c(0.25,0.90),
+        aspect.ratio=1,legend.background=element_rect(fill=NA),
+        strip.background = element_blank(),
+       strip.text.y = element_blank()) +
+  xlab(TeX("$\\T-T_w$")) + ylab(TeX("$\\P/P_c$"))# +
+  #geom_text(data=data.frame(x=50,y=-2,Model=c("ST2","TIP4P2005")),
+      #      aes(x,y,label=Model),inherit.aes = F,size=8)
+#ggsave("TIP4P2005ST2FacetGridWidomNew.pdf")
+```
+
+Property together
+```{r fig.width=3.5,fig.height=3.5}
+library(ggplot2)
+myshapes<-rep(16,7)
+myshapes[5]<-21
+theme_set(theme_bw(base_size = 20))
+
+#+ geom_vline(xintercept = 0, size=1, linetype="dashed"
+
+rT <- WaterModels %>% filter(Model=="TIP5P")  %>% mutate(Source="Madrid")
+names(rT)<-c("Temperature","Pressure","Property","Source","Model")
+
+
+rX<-rWaterModelsCW %>% filter(Property!="Spinodal",Property!="Widom",Property != "LLT" )
+rX <- rX %>% filter(!(Property=="Tmin" & Temperature > 0.))
+rW <- rX %>% filter(Property != "Widom")
+rB<-rW#[seq(1, nrow(rW), 5), ] 
+rB<-rbind(rW,rT)
+
+maxp <- rWaterModelsCW %>% filter(Property=="LLT") %>% summarise(max(Pressure))
+
+rB %>% filter((Source=="Madrid"|Source=="Poole")&Property!="Spinodal") %>%
+  ggplot(mapping=aes(Temperature,Pressure,color=factor(Property),shape=Model,alpha=Model)) +
+  geom_hline(yintercept = 0, size=1.1) + geom_segment(aes(x = 0, y = 0, xend = 0, yend = 1),size=0.75,linetype="dashed",color="black") +
+  geom_segment(aes(x = 0, y = 1., xend = 0, yend = 1.25),size=1.5,color="black") +
+  geom_path(aes(x = Temperature, y = Pressure,color=factor(Property)),data=rX %>% filter(Source=="LGRXN"),show.legend = FALSE) +
+  geom_point(size=2) +  scale_alpha_discrete(range=c(1, 1)) +
+  geom_point(data =subset(rWaterModelsCW,Property=="LLCP",Source!="LGRXN"),
+             aes(x = Temperature, y = Pressure,shape=factor(Model)), size = 2.25, shape=c(21,24,NA,NA),fill="white",
+             show.legend=FALSE,stroke=3) +
+  guides(col=guide_legend(nrow=4,override.aes = list(size=3,shape=myshapes)),
+         shape=guide_legend(nrow=2,override.aes=list(size=3,shape=c(16,17,NA,18),linetype=0 ))) +
+  scale_color_discrete(name="", labels=lapply(c("$\\c_p^{max}$",
+                                       "$\\c_p^{min}$",
+                                       "$\\kappa_T^{max}$",
+                                       "$\\kappa_T^{min}$",
+                                       "LLCP",
+                                       "$\\T^{max}_{\\rho}$",
+                                       "$\\T^{min}_{\\rho}$"),TeX) ) +
+  theme(legend.position=c(0.2,0.75),
+        aspect.ratio=1,legend.background=element_rect(fill=NA),
+        strip.background = element_blank(),
+       strip.text.y = element_blank()) +
+  xlab(TeX("$\\lambda \\frac{T - T_w}{T_c}$")) + ylab(TeX("$\\frac{P - P_s}{P_c - P_s}")) +scale_x_continuous(limits = c(-0.75, 0.75)) + scale_y_continuous(limits=c(0.,1.25),breaks=c(0.0,0.25,0.50,0.75,1.0,1.25))
+#ggsave("TIP4P2005ST2WidomNew-5.pdf")
+```
+
+
+
+#Lattice Gas Full Model
+Property together
+```{r fig.width=3.5,fig.height=3.5}
+library(ggplot2)
+
+
+LGRXNModels_1 <- read.table("../src/ScalingWaterModels/LGRXN-r-1.dat",header=T) %>% as_tibble()
+LGRXNModels_2 <- read.table("../src/ScalingWaterModels/LGRXN-r-2.dat",header=T) %>% as_tibble()
+LGRXNModels_3 <- read.table("../src/ScalingWaterModels/LGRXN-r-3.dat",header=T) %>% as_tibble()
+
+LGRXNModels_3$Model<-"Model_A"
+LGRXNModels_2$Model<-"Model_B"
+LGRXNModels_1$Model<-"Model_C"
+
+LG <- rbind(LGRXNModels_2,LGRXNModels_1)#,LGRXNModels_3)
+myshapes<-rep(16,7)
+myshapes[5]<-21
+theme_set(theme_bw(base_size = 20))
+
+#+ geom_vline(xintercept = 0, size=1, linetype="dashed"
+
+rT <- LG # %>% filter(Model=="TIP5P")  %>% mutate(Source="Madrid")
+names(rT)<-c("Temperature","Pressure","Property","Source","Model")
+ 
+rB<-rT
+
+maxp <- rB %>% filter(Property=="LLT") %>% summarise(max(Pressure))
+
+rB %>%
+  ggplot(mapping=aes(Temperature,Pressure,color=factor(Property),linetype=Model)) +
+  geom_hline(yintercept = 0, size=1.1) + geom_segment(aes(x = 0, y = 0, xend = 0, yend = 1),size=0.75,linetype="dashed",color="black") +
+  geom_path(aes(x = Temperature, y = Pressure,color=factor(Property)),data=rB %>% filter(Property!="LLCP",Property!="LLW",Property!="LLT",Property!="LVS"),show.legend = TRUE,inherit.aes=T)  +  scale_alpha_discrete(range=c(1, 1)) +
+  geom_segment(aes(x = 0, y = 1., xend = 0, yend = 1.25),size=1.5,color="black") +
+  guides(col=guide_legend(nrow=2),
+         shape=guide_legend(nrow=2,override.aes=list(size=3,shape=c(16,17,NA,18),linetype=0 ))) +
+    geom_point(data =subset(rB,Property=="LLCP"),
+             aes(x = Temperature, y = Pressure,shape=factor(Model)), size = 2.25, shape=c(21,22),fill="white",color="black",
+             show.legend=FALSE,stroke=3) +
+  scale_color_discrete(name="", labels=lapply(c("$\\c_p^{ext.}$",
+                                       "$\\kappa_T^{ext.}$",
+                                       "$\\T^{ext.}_{\\rho}$"),TeX) ) +
+  theme(legend.position=c(0.2,0.75),
+        aspect.ratio=1,legend.background=element_rect(fill=NA),
+        strip.background = element_blank(),
+       strip.text.y = element_blank()) +
+  xlab(TeX("$\\lambda_1 \\frac{T - T_w}{T_c}$")) + ylab(TeX("$\\lambda_2 \\frac{P - P_s}{P_c - P_s}")) +scale_x_continuous(limits = c(-0.75, 0.75)) + scale_y_continuous(limits=c(0.,1.50),breaks=c(0.0,0.25,0.50,0.75,1.0,1.25))
+ggsave("LatticeGasRescaled-2.pdf")
+```
+
+
+
+
+```{r}
+Cv<-read.table("../src/Data/collatedCV",sep="\t",stringsAsFactors = F, header=T) %>% as_tibble()
+Cv
+```
+
+
+```{r fig.width=3,fig.height=3}
+Cv %>% filter(!(Density <= 1020)) %>% 
+  ggplot(aes(x=Temperature,y=Cv,color=factor(Density))) +
+  geom_point(size=1.5) + facet_wrap(~Density,ncol=3) +
+  theme(plot.title = element_text(lineheight=.8, face="bold",size=12),
+          strip.text.x = element_blank(),legend.margin = unit(0, "cm")) +
+  scale_x_continuous(name="Temperature (K)",breaks=c(225,275,325)) + 
+  scale_y_continuous(name=expression(paste(italic("c")[v], " (J/kg K)")),breaks=c(4000,8000,12000),limits = c(4000,12000))  +
+  theme(legend.position="none",aspect.ratio=1) +
+  geom_text(aes(x=295.,y=11000.,label=paste(Density/1000.,"g/cc")),inherit.aes =T,size=4) + scale_color_brewer(palette = "Set1")
+ggsave("Cv-2.pdf")
+```
+
+
+
+Perform PCA on only data from TSEOS to avoid double counting. Also, drop Features. Consider the case where the units are scaled.
+```{r}
+PCA_T5 <- TIP4P2005 %>% filter(Source=="TSEOS") %>% 
+  select(Temperature,Pressure) %>% 
+  PCA(scale.unit=T,graph=F)
+```
+
+
+Visualize the components
+```{r fig.width=6,fig.height=6}
+PC1<- PCA_T5$ind$coord[,1]
+PC2<- PCA_T5$ind$coord[,2]
+PC3<- TIP4P2005 %>% select(Feature)
+PCsT <- data.frame(cbind(PC1,PC2))
+PCsT['Model'] <- "TIP4P2005"
+
+library(ggplot2)
+ggplot(PCsT,aes(PC1,PC2)) + geom_point(size=1) + 
+xlab("Major Component") + 
+ylab("Minor Component") +
+ggtitle("Normalized PCA for TIP4P2005") 
+#plot(PCA_T5,select="cos2 2",title="Normalized PCA for feature engineering")
+#title(x="Major Component at 70%")
+#ggsave("TIP4P2005NormalizedPCA.pdf")
+```
+
+## ST2
+Load the data
+```{r}
+ST2 <- read.table("../src/ScalingWaterModels/FeaturesST2Widom.dat",
+                        header=T, stringsAsFactors = F) %>% as_tibble()
+```
+
+What are the column names?
+```{r}
+names(ST2)
+ST2[ST2$Feature=="Spinodal",]<-ST2[ST2$Feature=="Spinodal",] %>% mutate(Pressure = Pressure-50.)
+```
+
+What are the distinct Sources?
+```{r}
+ST2 %>% distinct(Source)
+```
+
+Perform PCA on all data including TSEOS. There is no double counting here. Also, drop Features. Consider the case where the units are scaled.
+```{r}
+PCA_S2 <- ST2 %>% 
+  select(Temperature,Pressure) %>% 
+  PCA(scale.unit=T,graph=F)
+```
+
+
+Visualize the components
+```{r fig.width=6, fig.height=6}
+PC1<- PCA_S2$ind$coord[,1]
+PC2<- PCA_S2$ind$coord[,2]
+PC3<- ST2 %>% select(Feature)
+PCsS <- data.frame(cbind(PC1,PC2))
+PCsS["Model"] <- "ST2"
+
+library(ggplot2)
+ggplot(PCsS,aes(PC1,PC2)) + geom_point(size=1) + 
+xlab("Major Component") + 
+ylab("Minor Component") +
+ggtitle("Normalized PCA for ST2") 
+ggsave("ST2NormalizedPCA.pdf")
+#plot(PCA_S2,select="cos2 5")
+```
+
+### On both ST2 and TIP4P2005 simultaneously
+```{r}
+PCAll <- rbind(PCsS,PCsT)
+library(ggplot2)
+ggplot(PCAll,aes(PC1,PC2,color=Model)) + geom_point(size=1) + 
+xlab("Major Component") + 
+ylab("Minor Component") +
+ggtitle("Normalized PCA for ST2 and TIP4P2005")
+
+```
+
+
+
+### On both ST2 and TIP4P2005 together
+
+Perform PCA on all data including TSEOS. There is no double counting here. Also, drop Features. Consider the case where the units are scaled.
+```{r}
+
+ALL <- rbind(ST2 %>%
+               select(Temperature, Pressure) %>%
+               mutate_all(funs(1*.)),TIP4P2005 %>%
+               filter(Source == "TSEOS") %>%
+               select(Temperature, Pressure))
+
+PCA_A <- ALL %>% 
+  select(Temperature,Pressure) %>%
+  PCA(scale.unit=T,graph=F)
+```
+
+
+Visualize the components
+```{r}
+PC1<- PCA_A$ind$coord[,1]
+PC2<- PCA_A$ind$coord[,2]
+PCs <- data.frame(cbind(PC1,PC2))
+
+library(ggplot2)
+ggplot(PCs,aes(PC1,PC2)) + geom_point(size=1) + 
+xlab("Principal Component 1") + 
+ylab("Principal Component 2")  +
+coord_flip()
+
+#plot(PCA_T5,select="cos2 5")
+```
+
+The spinodal represents the first stability limit for a substance in a given phase. Formally, this is defined by the condition, $$\left(\frac{\partial P}{\partial V}\right)_{T,s} \equiv 0.$$
+where $P$ is the pressure, $V$ is the volume, $T$ is the temperature, and $s$ indicates the spinodal condition. The statement above necessary implies that the isothermal compressibility diverges at the spinodal. 
+
+In this document, our goal is to analyze statistical models for the properties of the spinodal. Specifically, we will consider two models:
+
+$$P_s=f(T)$$
+$$A_s=\frac{\sqrt{8}}{3\sqrt{\left(\frac{\partial^2 P}{\partial^2 V}\right)_{T,s}}} = g(T)$$
+
+Below, we consider a family of polynomial models for $f(T)$ and $g(T)$.
+
+## f(T)
+```{r fT}
+rm(list=ls())
+data <- read.table('../src/Data/PTspinodal.txt',header=T)
+attach(data)
+lmA1=lm(pressure~poly(reduced_temperature,1))
+lmA2=lm(pressure~poly(reduced_temperature,2))
+lmA3=lm(pressure~poly(reduced_temperature,3))
+lmA4=lm(pressure~poly(reduced_temperature,4))
+anova(lmA1,lmA2)
+anova(lmA2,lmA3)
+anova(lmA3,lmA4)
+plot(reduced_temperature,pressure)
+lines(reduced_temperature,fitted(lmA2))
+```
+
+## g(T)
+
+You can also embed plots, for example:
+
+```{r gT}
+rm(list=ls())
+data <- read.table('../src/Data/ATspinodal.txt',header=T)
+data <- data[2:21,]
+class(data)
+attach(data)
+lmA1=lm(Afactor~poly(reduced_temperature,1))
+lmA2=lm(Afactor~poly(reduced_temperature,2))
+lmA3=lm(Afactor~poly(reduced_temperature,3))
+lmA4=lm(Afactor~poly(reduced_temperature,4))
+lmA5=lm(Afactor~poly(reduced_temperature,5))
+anova(lmA1,lmA2)
+anova(lmA2,lmA3)
+anova(lmA2,lmA4)
+anova(lmA3,lmA4)
+anova(lmA4,lmA5)
+plot(reduced_temperature,Afactor)
+lines(reduced_temperature,fitted(lmA2))
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+
+
+
+
+

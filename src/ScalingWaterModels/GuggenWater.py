@@ -2,6 +2,7 @@ from TData import CriticalParams
 import numpy as np
 from numpy.polynomial.polynomial import polyval2d,polyval
 from numpy import poly1d
+import warnings
 
 class TIP4P2005:
 	def __init__(self,CP=CriticalParams(182.,170.,0.05645)):
@@ -45,7 +46,8 @@ class TIP4P2005:
 		else:
 			newT = np.extract(np.array([x >= 100. and x <= 600. for x in T]),T)
 			if len(newT) > 1:
-				raise ValueError("Still too many real roots found %f" % newT)
+				warnings.warn("Too many values returned for WidomT. I will pick largest.")
+				return float(newT[-1])
 			else:
 				return float(newT)
 
@@ -68,6 +70,16 @@ class ST2I_mean_field(TIP4P2005):
 		self.model_name = "ST2"
 
 
+class TIP5P(TIP4P2005):
+	def __init__(self,CP=CriticalParams(213.,338.,0.0595)):
+		assert isinstance(CP,CriticalParams)
+		self.CriticalParams = CP
+		self.spinodal = np.array([-496.40292951,  1503.16997588, -1632.66291085])
+		L0, a, b, d, f = 1.86946, 0.09801, 0.19569, 0.00517, 3.13075
+		self.widom = np.array([[0., a*L0, d*L0],[L0, b*L0, 0.], [f*L0, 0., 0.]])
+		self.model_name = "TIP5P"
+
+
 
 class GuggenheimWater:
 	def __init__(self,model=TIP4P2005()):
@@ -81,13 +93,17 @@ class GuggenheimWater:
 		self.Rescalings = {}
 		self.l = 1.
 
-	def rescale(self,T,P,offsetCriticalPt=0.8676):
+	def rescale(self,T,P,offsetCriticalPt=1.,off2=1.,mode="V0"):
 		Tw, Ps =  self.model.WidomTemperature(P),self.model.SpinodalPressure(T)
 		Tc, Pc = self.model.CriticalParams.Tc, self.model.CriticalParams.Pc
-		if (P-Ps) < 0.75*(Pc-Ps):
-			Tr, Pr = (T-Tw)/100.,(P-Ps)/644
+		off = offsetCriticalPt
+		if mode == "V0":
+			Tr, Pr = off*(T-Tw)/Tc, off2*(P-Ps)/(Pc-Ps)
 		else:
-			Tr, Pr = (T-Tw)/100., P/Pc
+			if (P-Ps) < 0.75*(Pc-Ps):
+				Tr, Pr = (T-Tw)/100.,(P-Ps)/644
+			else:
+				Tr, Pr = (T-Tw)/100., P/Pc
 		return Tr, Pr
 
 	def classic(self,T,P):
@@ -138,14 +154,17 @@ class GuggenheimWater:
 		self.__init__(model=mymodel)
 
 
-	def addPoint(self,T,P,Property="Unknown",Source="Unknown",offsetCriticalPt=1.,callback="rescale"):
+	def addPoint(self,T,P,Property="Unknown",Source="Unknown",offsetCriticalPt=1.,off2=1.,callback="rescale"):
 		try:
 			func = getattr(self,str(callback))
 		except:
 			print("Callback function error, valid options are:\ndelineateSpiondal\ndelineateWidomLine\n"\
 				"delineateSpinodalandWidomLine\ndelineateCriticalPoint\nclassic\nclassicAndWidom\n")
 			exit(-1)
-		x,y = func(T,P)
+		if callback == "rescale":
+			x,y = func(T,P,offsetCriticalPt,off2=off2)
+		else:
+			x,y = func(T,P)
 		self.Trescale.append(x)
 		self.Prescale.append(y)
 		self.Property.append(Property)
@@ -184,7 +203,7 @@ class GuggenheimWater:
 					T = np.array(self.PropertyDict[myproperty])[:,0]
 					P = np.array(self.PropertyDict[myproperty])[:,1]
 					if myproperty not in skip: 
-						plt.plot(T,P,marker,label=myproperty, markersize=12,color=color, linewidth=2)
+						plt.plot(T,P,marker,label=myproperty, markersize=6,color=color, linewidth=2)
 					else:
 						plt.plot(T,P,'-',label=myproperty, linewidth=2, color=color)
 

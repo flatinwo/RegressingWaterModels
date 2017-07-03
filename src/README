@@ -17,3 +17,8 @@ target significance of less than 0.1%
 check A vs T fit --> anova shows that polynomial of order 2 is best fit for A
 vs T data, considerations assigning lower weights to low temperature data, and
 considering a significance of 0.1%	
+looks like i am missing a kts component to spinodal
+check mathematica script
+best of the best is best*_3
+2.2543e-01 at 0
+1.74e-01 at current_fit
