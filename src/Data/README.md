@@ -1,5 +1,5 @@
 
-#Synopsis
+# Synopsis
 This folder contains data files for the analysis of various water models.
 Below is a brief description of the data format.
 
