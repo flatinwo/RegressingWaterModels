@@ -332,7 +332,7 @@ class ThermoFit:
 								options={'disp':True,
 								'maxiter':1000})
 
-				np.savetxt('current_fit_sub',res.x)
+				np.savetxt('./params/current_fit_sub',res.x)
 				self.model.setValues(res.x)
 			if figure:
 				import matplotlib.pyplot as plt
@@ -383,7 +383,7 @@ if __name__ == "__main__":
 		0.0248091, -0.0400033, 2.18819, -0.000994166, -0.00840543, 0.0719058, -0.256674, 0.]
 	else:
 		#x=np.loadtxt('./Data/current_fit_x2_06')
-		x=np.loadtxt('./current_fit')
+		x=np.loadtxt('./params/current_fit')
 		#x=np.loadtxt('./best_current_fit_3')
 
 	#x = np.zeros_like(x)
@@ -391,7 +391,7 @@ if __name__ == "__main__":
 
 	print(myThermoPPty.criticalpt)
 	myThermoPPty.setValues(x,interaction=True,index=True)
-	y = np.loadtxt('./current_fit_sub')
+	y = np.loadtxt('./params/current_fit_sub')
 	myThermoPPty.setValues(y,interaction=True)
 
 #290.0, -177.96899999999999, 860.0, 7996.25, 3458.3573345851223, nan
